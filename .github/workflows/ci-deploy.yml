@@ -57,6 +57,15 @@ jobs:
       - name: Prisma generate
         run: npx prisma generate
 
+      - name: Check repository secrets are configured
+        run: |
+          echo "DATABASE_URL: ${{ secrets.DATABASE_URL != '' && 'yes' || 'MISSING' }}"
+          echo "DIRECT_URL: ${{ secrets.DIRECT_URL != '' && 'yes' || 'MISSING' }}"
+          echo "AUTH_SECRET: ${{ secrets.AUTH_SECRET != '' && 'yes' || 'MISSING' }}"
+          echo "ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL != '' && 'yes' || 'MISSING' }}"
+          echo "ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD != '' && 'yes' || 'MISSING' }}"
+          echo "NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN != '' && 'yes' || 'MISSING' }}"
+
       - name: Validate CI secrets
         run: bash scripts/validate-ci-env.sh
 
