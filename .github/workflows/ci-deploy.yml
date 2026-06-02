@@ -1,117 +1,117 @@
-# Runs full test suite on every push/PR to main.
-# On push to main (after tests pass), deploys to Vercel production.
-#
-# Required GitHub repository secrets:
-#   DATABASE_URL (pooler :6543), DIRECT_URL (session/direct :5432 — required for migrate)
-#   AUTH_SECRET
-#   ADMIN_EMAIL, ADMIN_PASSWORD
-#   NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
-#   VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
-#
-# Get Vercel IDs: vercel link (local) or Project Settings → General on vercel.com
-
-name: CI & Deploy
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
-jobs:
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    env:
-      CI: true
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      DIRECT_URL: ${{ secrets.DIRECT_URL }}
-      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
-      AUTH_URL: http://127.0.0.1:3000
-      NEXTAUTH_URL: http://127.0.0.1:3000
-      AUTH_TRUST_HOST: "true"
-      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
-      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
-      NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN }}
-      PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6.4.0
-        with:
-          node-version: "24"
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Prisma generate
-        run: npx prisma generate
-
-      - name: Check repository secrets are configured
-        run: |
-          echo "DATABASE_URL: ${{ secrets.DATABASE_URL != '' && 'yes' || 'MISSING' }}"
-          echo "DIRECT_URL: ${{ secrets.DIRECT_URL != '' && 'yes' || 'MISSING' }}"
-          echo "AUTH_SECRET: ${{ secrets.AUTH_SECRET != '' && 'yes' || 'MISSING' }}"
-          echo "ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL != '' && 'yes' || 'MISSING' }}"
-          echo "ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD != '' && 'yes' || 'MISSING' }}"
-          echo "NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN != '' && 'yes' || 'MISSING' }}"
-
-      - name: Validate CI secrets
-        run: bash scripts/validate-ci-env.sh
-
-      - name: Apply migrations
-        run: npx prisma migrate deploy
-
-      - name: Seed admin user
-        run: npm run db:seed
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Production build
-        run: npm run build
-
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
-
-      - name: E2E tests
-        run: npm run test:e2e
-
-  deploy:
-    name: Deploy to Vercel
-    needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    env:
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6.4.0
-        with:
-          node-version: "24"
-
-      - name: Install Vercel CLI
-        run: npm install --global vercel@latest
-
-      - name: Pull Vercel environment
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Build for Vercel
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Deploy to Vercel
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+# Runs full test suite on every push/PR to main.
+# On push to main (after tests pass), deploys to Vercel production.
+#
+# App config: GitHub → Settings → Environments → Production → Variables
+#   DATABASE_URL, DIRECT_URL, AUTH_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD,
+#   NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
+#
+# Deploy only (repository Secrets tab, not Variables):
+#   VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
+
+name: CI & Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    environment: Production
+    env:
+      CI: true
+      DATABASE_URL: ${{ vars.DATABASE_URL }}
+      DIRECT_URL: ${{ vars.DIRECT_URL }}
+      AUTH_SECRET: ${{ vars.AUTH_SECRET }}
+      AUTH_URL: http://127.0.0.1:3000
+      NEXTAUTH_URL: http://127.0.0.1:3000
+      AUTH_TRUST_HOST: "true"
+      ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL }}
+      ADMIN_PASSWORD: ${{ vars.ADMIN_PASSWORD }}
+      NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ vars.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Check Production environment variables
+        run: |
+          echo "DATABASE_URL: ${{ vars.DATABASE_URL != '' && 'yes' || 'MISSING' }}"
+          echo "DIRECT_URL: ${{ vars.DIRECT_URL != '' && 'yes' || 'MISSING' }}"
+          echo "AUTH_SECRET: ${{ vars.AUTH_SECRET != '' && 'yes' || 'MISSING' }}"
+          echo "ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL != '' && 'yes' || 'MISSING' }}"
+          echo "ADMIN_PASSWORD: ${{ vars.ADMIN_PASSWORD != '' && 'yes' || 'MISSING' }}"
+          echo "NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ vars.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN != '' && 'yes' || 'MISSING' }}"
+
+      - name: Validate CI secrets
+        run: bash scripts/validate-ci-env.sh
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      - name: Seed admin user
+        run: npm run db:seed
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Production build
+        run: npm run build
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E tests
+        run: npm run test:e2e
+
+  deploy:
+    name: Deploy to Vercel
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version: "24"
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build for Vercel
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Vercel
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+
