@@ -206,7 +206,7 @@ export function DataTable<T>({
 
     if (sort) {
       const col = columns.find((c) => c.id === sort.id);
-      if (col?.sortable !== false) {
+      if (col && col.sortable !== false) {
         rows.sort((a, b) => {
           const av = getSortValue(a, col);
           const bv = getSortValue(b, col);
