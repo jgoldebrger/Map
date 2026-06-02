@@ -1,0 +1,263 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import mapboxgl from "mapbox-gl";
+import type { AssignmentMap } from "@/lib/queries/assignments";
+
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? "";
+
+export type MapMode = "view" | "edit";
+
+export type MapboxMapProps = {
+  assignments: AssignmentMap;
+  mode?: MapMode;
+  selectedFips?: Set<string>;
+  onCountyClick?: (fips: string) => void;
+  onCountyHover?: (fips: string | null) => void;
+  onBoxSelect?: (fips: string[]) => void;
+  onMapReady?: (map: mapboxgl.Map | null) => void;
+  className?: string;
+};
+
+const US_BOUNDS: mapboxgl.LngLatBoundsLike = [
+  [-125, 24],
+  [-66, 50],
+];
+
+function buildColorExpression(assignments: AssignmentMap): mapboxgl.Expression {
+  const entries = Object.entries(assignments);
+  if (entries.length === 0) {
+    return ["literal", "#e2e8f0"];
+  }
+
+  const matchExpr: unknown[] = ["match", ["get", "GEOID"]];
+  for (const [fips, data] of entries) {
+    matchExpr.push(fips, data.color);
+  }
+  matchExpr.push("#e2e8f0");
+  return matchExpr as mapboxgl.Expression;
+}
+
+function fipsFromFeature(props: GeoJSON.GeoJsonProperties | null | undefined): string | undefined {
+  const raw = props?.GEOID ?? props?.geoid;
+  if (raw == null || raw === "") return undefined;
+  return String(raw).padStart(5, "0").slice(-5);
+}
+
+function ensureCountyLayers(map: mapboxgl.Map, assignments: AssignmentMap) {
+  const sourceId = "counties";
+  const layerId = "counties-fill";
+
+  if (!map.getSource(sourceId)) {
+    map.addSource(sourceId, {
+      type: "geojson",
+      data: "/geo/us-counties.geojson",
+      generateId: true,
+    });
+  }
+
+  if (!map.getLayer(layerId)) {
+    map.addLayer({
+      id: layerId,
+      type: "fill",
+      source: sourceId,
+      paint: {
+        "fill-color": buildColorExpression(assignments),
+        "fill-opacity": 0.7,
+        "fill-outline-color": "#64748b",
+      },
+    });
+
+    map.addLayer({
+      id: "counties-outline",
+      type: "line",
+      source: sourceId,
+      paint: {
+        "line-color": "#94a3b8",
+        "line-width": 0.5,
+      },
+    });
+
+    map.addLayer({
+      id: "counties-selected",
+      type: "line",
+      source: sourceId,
+      paint: {
+        "line-color": "#2563eb",
+        "line-width": 3,
+      },
+      filter: ["in", ["get", "GEOID"], ["literal", []]],
+    });
+  } else {
+    map.setPaintProperty(layerId, "fill-color", buildColorExpression(assignments));
+  }
+}
+
+export function MapboxMap({
+  assignments,
+  mode = "view",
+  selectedFips,
+  onCountyClick,
+  onCountyHover,
+  onBoxSelect,
+  onMapReady,
+  className,
+}: MapboxMapProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+
+  const assignmentsRef = useRef(assignments);
+  assignmentsRef.current = assignments;
+
+  const onCountyClickRef = useRef(onCountyClick);
+  onCountyClickRef.current = onCountyClick;
+
+  const onCountyHoverRef = useRef(onCountyHover);
+  onCountyHoverRef.current = onCountyHover;
+
+  const onBoxSelectRef = useRef(onBoxSelect);
+  onBoxSelectRef.current = onBoxSelect;
+
+  const onMapReadyRef = useRef(onMapReady);
+  onMapReadyRef.current = onMapReady;
+
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return;
+
+    const map = new mapboxgl.Map({
+      container: containerRef.current,
+      style: "mapbox://styles/mapbox/light-v11",
+      center: [-98, 39],
+      zoom: 3.5,
+      maxBounds: US_BOUNDS,
+    });
+
+    map.addControl(new mapboxgl.NavigationControl(), "top-right");
+
+    const handleLoad = () => {
+      ensureCountyLayers(map, assignmentsRef.current);
+      onMapReadyRef.current?.(map);
+    };
+
+    map.on("load", handleLoad);
+
+    const handleClick = (e: mapboxgl.MapLayerMouseEvent) => {
+      const fips = fipsFromFeature(e.features?.[0]?.properties);
+      if (fips) onCountyClickRef.current?.(fips);
+    };
+
+    const handleMouseMove = (e: mapboxgl.MapLayerMouseEvent) => {
+      map.getCanvas().style.cursor = "pointer";
+      const fips = fipsFromFeature(e.features?.[0]?.properties);
+      onCountyHoverRef.current?.(fips ?? null);
+    };
+
+    const handleMouseLeave = () => {
+      map.getCanvas().style.cursor = "";
+      onCountyHoverRef.current?.(null);
+    };
+
+    map.on("click", "counties-fill", handleClick);
+    map.on("mousemove", "counties-fill", handleMouseMove);
+    map.on("mouseleave", "counties-fill", handleMouseLeave);
+
+    let mouseDown: ((e: mapboxgl.MapMouseEvent) => void) | undefined;
+    let mouseMove: ((e: mapboxgl.MapMouseEvent) => void) | undefined;
+    let mouseUp: ((e: mapboxgl.MapMouseEvent) => void) | undefined;
+
+    if (mode === "edit") {
+      let start: mapboxgl.Point | null = null;
+      let box: HTMLDivElement | null = null;
+      const canvas = map.getCanvasContainer();
+
+      mouseDown = (e: mapboxgl.MapMouseEvent) => {
+        if (e.originalEvent.shiftKey) {
+          map.dragPan.disable();
+          start = e.point;
+          box = document.createElement("div");
+          box.className = "absolute border-2 border-blue-500 bg-blue-500/20 pointer-events-none z-10";
+          box.style.left = `${start.x}px`;
+          box.style.top = `${start.y}px`;
+          canvas.appendChild(box);
+        }
+      };
+
+      mouseMove = (e: mapboxgl.MapMouseEvent) => {
+        if (!start || !box) return;
+        const minX = Math.min(start.x, e.point.x);
+        const minY = Math.min(start.y, e.point.y);
+        const maxX = Math.max(start.x, e.point.x);
+        const maxY = Math.max(start.y, e.point.y);
+        box.style.left = `${minX}px`;
+        box.style.top = `${minY}px`;
+        box.style.width = `${maxX - minX}px`;
+        box.style.height = `${maxY - minY}px`;
+      };
+
+      mouseUp = (e: mapboxgl.MapMouseEvent) => {
+        if (!start || !box) return;
+        map.dragPan.enable();
+        const bbox: [mapboxgl.PointLike, mapboxgl.PointLike] = [start, e.point];
+        const features = map.queryRenderedFeatures(bbox, { layers: ["counties-fill"] });
+        const fips = [
+          ...new Set(
+            features
+              .map((f) => fipsFromFeature(f.properties))
+              .filter((f): f is string => Boolean(f)),
+          ),
+        ];
+        onBoxSelectRef.current?.(fips);
+        box.remove();
+        box = null;
+        start = null;
+      };
+
+      map.on("mousedown", mouseDown);
+      map.on("mousemove", mouseMove);
+      map.on("mouseup", mouseUp);
+    }
+
+    mapRef.current = map;
+
+    return () => {
+      onMapReadyRef.current?.(null);
+      map.off("load", handleLoad);
+      map.off("click", "counties-fill", handleClick);
+      map.off("mousemove", "counties-fill", handleMouseMove);
+      map.off("mouseleave", "counties-fill", handleMouseLeave);
+      if (mouseDown) map.off("mousedown", mouseDown);
+      if (mouseMove) map.off("mousemove", mouseMove);
+      if (mouseUp) map.off("mouseup", mouseUp);
+      map.remove();
+      mapRef.current = null;
+    };
+  }, [mode]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+
+    if (map.getLayer("counties-fill")) {
+      map.setPaintProperty("counties-fill", "fill-color", buildColorExpression(assignments));
+    } else {
+      map.once("load", () => ensureCountyLayers(map, assignments));
+    }
+  }, [assignments]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.getLayer("counties-selected")) return;
+    const fips = selectedFips ? [...selectedFips] : [];
+    map.setFilter("counties-selected", ["in", ["get", "GEOID"], ["literal", fips]]);
+  }, [selectedFips]);
+
+  return (
+    <div className={className ?? "relative h-full w-full"}>
+      <div ref={containerRef} className="h-full w-full" />
+    </div>
+  );
+}
+
+export function resetMapView(map: mapboxgl.Map | null) {
+  map?.flyTo({ center: [-98, 39], zoom: 3.5 });
+}

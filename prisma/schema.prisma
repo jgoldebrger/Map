@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  LOGISTICS_MANAGER
+  READ_ONLY
+}
+
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         Role       @default(READ_ONLY)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  auditLogs    AuditLog[]
+}
+
+model ShippingMethod {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  description String?
+  sortOrder   Int         @default(0)
+  territories Territory[]
+}
+
+model Territory {
+  id               String             @id @default(cuid())
+  name             String
+  shippingMethodId String
+  shippingMethod   ShippingMethod     @relation(fields: [shippingMethodId], references: [id])
+  color            String             @default("#94a3b8")
+  shipDay          String?
+  cutoffDay        String?
+  notes            String?
+  active           Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  assignments      CountyAssignment[]
+
+  @@index([shippingMethodId])
+  @@index([active])
+}
+
+model County {
+  id          String            @id @default(cuid())
+  name        String
+  state       String            @db.Char(2)
+  fipsCode    String            @unique @db.Char(5)
+  geoJsonId   String?
+  assignment  CountyAssignment?
+  zipCodes    ZipCode[]
+
+  @@index([state])
+  @@index([name])
+}
+
+model CountyAssignment {
+  id          String    @id @default(cuid())
+  countyId    String    @unique
+  county      County    @relation(fields: [countyId], references: [id], onDelete: Cascade)
+  territoryId String
+  territory   Territory @relation(fields: [territoryId], references: [id])
+
+  @@index([territoryId])
+}
+
+model ZipCode {
+  id       String @id @default(cuid())
+  zip      String @unique @db.Char(5)
+  city     String
+  countyId String
+  county   County @relation(fields: [countyId], references: [id])
+
+  @@index([city])
+  @@index([countyId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String
+  entityId   String
+  oldValue   Json?
+  newValue   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, createdAt])
+  @@index([userId])
+}
