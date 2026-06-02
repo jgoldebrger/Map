@@ -28,8 +28,6 @@ declare module "@auth/core/jwt" {
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
-  secret: process.env.AUTH_SECRET,
-  trustHost: true,
   providers: [
     Credentials({
       name: "credentials",
@@ -58,7 +56,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    ...authConfig.callbacks,
+    redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      try {
+        if (new URL(url).origin === new URL(baseUrl).origin) return url;
+      } catch {
+        // ignore invalid URL
+      }
+      return `${baseUrl}/admin`;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id!;
