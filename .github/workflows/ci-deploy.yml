@@ -2,7 +2,8 @@
 # On push to main (after tests pass), deploys to Vercel production.
 #
 # Required GitHub repository secrets:
-#   DATABASE_URL, DIRECT_URL, AUTH_SECRET
+#   DATABASE_URL (pooler :6543), DIRECT_URL (session/direct :5432 — required for migrate)
+#   AUTH_SECRET
 #   ADMIN_EMAIL, ADMIN_PASSWORD
 #   NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
 #   VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
@@ -55,6 +56,9 @@ jobs:
 
       - name: Prisma generate
         run: npx prisma generate
+
+      - name: Validate CI secrets
+        run: bash scripts/validate-ci-env.sh
 
       - name: Apply migrations
         run: npx prisma migrate deploy
