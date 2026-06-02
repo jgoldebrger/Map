@@ -1,15 +1,20 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
+const host = process.env.PLAYWRIGHT_HOST ?? "127.0.0.1";
+const port = process.env.PLAYWRIGHT_PORT ?? "3000";
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://${host}:${port}`;
+
+const isCi = !!process.env.CI;
 
 export default defineConfig({
   testDir: "./e2e",
   globalSetup: "./e2e/global-setup.ts",
+  globalTimeout: isCi ? 120_000 : undefined,
   fullyParallel: false,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  forbidOnly: isCi,
+  retries: isCi ? 1 : 0,
   workers: 1,
-  reporter: "list",
+  reporter: isCi ? [["list"], ["github"]] : "list",
   timeout: 60_000,
   use: {
     baseURL,
@@ -17,10 +22,20 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: {
-    command: process.env.CI ? "npm run start" : "npm run dev",
-    url: baseURL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: process.env.PLAYWRIGHT_SKIP_WEBSERVER
+    ? undefined
+    : {
+        command: isCi ? "node server.js" : "npm run dev",
+        cwd: isCi ? ".next/standalone" : undefined,
+        url: baseURL,
+        reuseExistingServer: !isCi,
+        timeout: 180_000,
+        stdout: "pipe",
+        stderr: "pipe",
+        env: {
+          ...process.env,
+          HOSTNAME: host,
+          PORT: port,
+        },
+      },
 });
