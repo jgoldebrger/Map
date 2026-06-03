@@ -1,17 +1,33 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchAssignments, type AssignmentMap } from "@/lib/queries/assignments";
+import {
+  fetchAssignments,
+  patchAssignmentMap,
+  type AssignmentMap,
+  type assignmentFromTerritory,
+} from "@/lib/queries/assignments";
+
+type TerritoryForAssignment = Parameters<typeof assignmentFromTerritory>[0];
 
 export function useTerritoryAssignments() {
   return useQuery<AssignmentMap>({
     queryKey: ["assignments"],
     queryFn: fetchAssignments,
-    staleTime: 30_000,
+    staleTime: 0,
   });
 }
 
 export function useInvalidateAssignments() {
   const qc = useQueryClient();
-  return () => qc.invalidateQueries({ queryKey: ["assignments"] });
+  return () => qc.refetchQueries({ queryKey: ["assignments"] });
+}
+
+export function usePatchAssignments() {
+  const qc = useQueryClient();
+  return (fipsCodes: string[], territory: TerritoryForAssignment | null) => {
+    qc.setQueryData<AssignmentMap>(["assignments"], (current) =>
+      patchAssignmentMap(current ?? {}, fipsCodes, territory),
+    );
+  };
 }

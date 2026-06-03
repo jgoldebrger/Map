@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { useTerritoryAssignments, useInvalidateAssignments } from "@/hooks/useTerritoryAssignments";
+import { useTerritoryAssignments, useInvalidateAssignments, usePatchAssignments } from "@/hooks/useTerritoryAssignments";
 import { useMapEditorHistory } from "@/hooks/useMapEditorHistory";
 import { MapLegend } from "@/components/map/MapLegend";
 import { UndoRedoToolbar } from "@/components/map/editor/UndoRedoToolbar";
@@ -30,12 +30,17 @@ type Territory = {
   id: string;
   name: string;
   color: string;
-  shippingMethod: { name: string };
+  shipDay: string | null;
+  cutoffDay: string | null;
+  notes: string | null;
+  shippingMethodId: string;
+  shippingMethod: { id: string; name: string };
 };
 
 export default function MapEditorPage() {
   const { data: assignments = {}, isLoading } = useTerritoryAssignments();
   const invalidate = useInvalidateAssignments();
+  const patchAssignments = usePatchAssignments();
   const { push, undo, canUndo, canRedo } = useMapEditorHistory();
 
   const [selectedFips, setSelectedFips] = useState<Set<string>>(new Set());
@@ -127,9 +132,13 @@ export default function MapEditorPage() {
 
     setSaving(false);
     if (res.ok) {
+      const territory = territories.find((t) => t.id === assignTerritoryId);
+      if (territory) {
+        patchAssignments(fipsCodes, territory);
+      }
       push({ fipsCodes, previousTerritoryIds, newTerritoryId: assignTerritoryId });
       setSelectedFips(new Set());
-      invalidate();
+      void invalidate();
       return;
     }
 
@@ -142,6 +151,8 @@ export default function MapEditorPage() {
     if (!entry) return;
     for (const fips of entry.fipsCodes) {
       const prevId = entry.previousTerritoryIds[fips];
+      const prevTerritory = prevId ? (territories.find((t) => t.id === prevId) ?? null) : null;
+      patchAssignments([fips], prevTerritory);
       if (prevId) {
         await fetch("/api/counties", {
           method: "PATCH",
@@ -150,7 +161,7 @@ export default function MapEditorPage() {
         });
       }
     }
-    invalidate();
+    void invalidate();
   };
 
   return (

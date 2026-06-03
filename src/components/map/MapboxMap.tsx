@@ -236,12 +236,16 @@ export function MapboxMap({
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !map.isStyleLoaded()) return;
+    if (!map) return;
 
-    if (map.getLayer("counties-fill")) {
-      map.setPaintProperty("counties-fill", "fill-color", buildColorExpression(assignments));
-    } else {
-      map.once("load", () => ensureCountyLayers(map, assignments));
+    const applyColors = () => {
+      if (!map.isStyleLoaded()) return;
+      ensureCountyLayers(map, assignments);
+    };
+
+    applyColors();
+    if (!map.isStyleLoaded()) {
+      map.once("load", applyColors);
     }
   }, [assignments]);
 
