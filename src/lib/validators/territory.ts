@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { parseCutoffDay, parseShipDay } from "@/lib/weekdays";
+import { formatShipDays, parseCutoffDay, parseShipDays } from "@/lib/weekdays";
 
 export const territorySchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -9,8 +9,8 @@ export const territorySchema = z.object({
     .string()
     .optional()
     .refine(
-      (value) => !value || parseShipDay(value) !== undefined,
-      "Ship day must be a valid weekday",
+      (value) => !value || parseShipDays(value).length > 0,
+      "Ship days must be valid weekdays",
     ),
   cutoffDay: z
     .string()
@@ -29,7 +29,7 @@ export function territoryInputFromForm(data: {
   name: string;
   shippingMethodId: string;
   color: string;
-  shipDay?: string;
+  shipDays: string[];
   cutoffDay?: string;
   notes?: string;
   active: boolean;
@@ -38,7 +38,7 @@ export function territoryInputFromForm(data: {
     name: data.name,
     shippingMethodId: data.shippingMethodId,
     color: data.color,
-    shipDay: parseShipDay(data.shipDay),
+    shipDay: formatShipDays(data.shipDays),
     cutoffDay: parseCutoffDay(data.cutoffDay),
     notes: data.notes,
     active: data.active,
