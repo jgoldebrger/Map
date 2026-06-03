@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
   if (polygon) {
     try {
-      const geo = JSON.parse(polygon);
+      JSON.parse(polygon);
       const rows = await prisma.$queryRaw<{ fipsCode: string; id: string }[]>`
         SELECT c."fipsCode", c.id
         FROM "County" c
@@ -29,7 +29,10 @@ export async function GET(request: NextRequest) {
   }
 
   if (bbox) {
-    const [minLng, minLat, maxLng, maxLat] = bbox.split(",").map(Number);
+    const coords = bbox.split(",").map(Number);
+    if (coords.length !== 4 || coords.some(Number.isNaN)) {
+      return NextResponse.json({ error: "Invalid bbox" }, { status: 400 });
+    }
     const counties = await prisma.county.findMany({
       select: { fipsCode: true },
     });

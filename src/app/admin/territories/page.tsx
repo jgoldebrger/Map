@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,14 +33,14 @@ export default function TerritoriesPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Territory | null>(null);
 
-  const load = () => {
+  const load = useCallback(() => {
     fetch("/api/territories").then((r) => r.json()).then(setTerritories);
     fetch("/api/shipping-methods").then((r) => r.json()).then(setMethods);
-  };
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const handleSave = async (data: TerritoryInput) => {
     if (editing) {
@@ -61,7 +61,7 @@ export default function TerritoriesPage() {
     load();
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     const res = await fetch(`/api/territories?id=${id}`, { method: "DELETE" });
     if (!res.ok) {
       const err = await res.json();
@@ -69,7 +69,7 @@ export default function TerritoriesPage() {
       return;
     }
     load();
-  };
+  }, [load]);
 
   const columns = useMemo<DataTableColumn<Territory>[]>(
     () => [
@@ -147,7 +147,7 @@ export default function TerritoriesPage() {
         ),
       },
     ],
-    [],
+    [handleDelete],
   );
 
   return (

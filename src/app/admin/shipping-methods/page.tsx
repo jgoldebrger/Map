@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -38,15 +38,15 @@ export default function ShippingMethodsPage() {
     defaultValues: { name: "", description: "", sortOrder: 0 },
   });
 
-  const load = () => {
+  const load = useCallback(() => {
     fetch("/api/shipping-methods")
       .then((r) => r.json())
       .then(setMethods);
-  };
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const openCreate = () => {
     setEditing(null);
@@ -56,7 +56,7 @@ export default function ShippingMethodsPage() {
     setOpen(true);
   };
 
-  const openEdit = (m: ShippingMethod) => {
+  const openEdit = useCallback((m: ShippingMethod) => {
     setEditing(m);
     form.reset({
       name: m.name,
@@ -64,7 +64,7 @@ export default function ShippingMethodsPage() {
       sortOrder: m.sortOrder,
     });
     setOpen(true);
-  };
+  }, [form]);
 
   const onSubmit = async (data: ShippingMethodInput) => {
     const res = editing
@@ -90,7 +90,7 @@ export default function ShippingMethodsPage() {
     load();
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     const res = await fetch(`/api/shipping-methods?id=${id}`, { method: "DELETE" });
     if (!res.ok) {
       const err = await res.json();
@@ -98,7 +98,7 @@ export default function ShippingMethodsPage() {
       return;
     }
     load();
-  };
+  }, [load]);
 
   const columns = useMemo<DataTableColumn<ShippingMethod>[]>(
     () => [
@@ -149,7 +149,7 @@ export default function ShippingMethodsPage() {
         ),
       },
     ],
-    [methods],
+    [handleDelete, openEdit],
   );
 
   return (
