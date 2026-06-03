@@ -42,6 +42,9 @@ jobs:
       ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL }}
       ADMIN_PASSWORD: ${{ vars.ADMIN_PASSWORD }}
       NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ vars.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+      PLAYWRIGHT_HOST: 127.0.0.1
+      PLAYWRIGHT_PORT: "3000"
     steps:
       - name: Checkout
         uses: actions/checkout@v6.0.3
@@ -90,65 +93,25 @@ jobs:
         if: github.event_name == 'push'
         run: bash scripts/prepare-standalone-e2e.sh
 
-      - name: Upload standalone build for E2E
+      - name: Cache Playwright browsers
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@v4
+        uses: actions/cache@v4
+        id: playwright-cache
         with:
-          name: standalone-app
-          path: .next/standalone/
-          retention-days: 1
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
-  e2e:
-    name: E2E
-    needs: test
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    # Pre-installed Chromium — avoids slow/hanging `playwright install --with-deps`
-    container:
-      image: mcr.microsoft.com/playwright:v1.51.1-noble
-    environment: Production
-    env:
-      CI: true
-      DATABASE_URL: ${{ vars.DATABASE_URL }}
-      DIRECT_URL: ${{ vars.DIRECT_URL }}
-      AUTH_SECRET: ${{ vars.AUTH_SECRET }}
-      AUTH_URL: http://127.0.0.1:3000
-      NEXTAUTH_URL: http://127.0.0.1:3000
-      AUTH_TRUST_HOST: "true"
-      ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL }}
-      ADMIN_PASSWORD: ${{ vars.ADMIN_PASSWORD }}
-      NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ vars.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN }}
-      PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
-      PLAYWRIGHT_HOST: 127.0.0.1
-      PLAYWRIGHT_PORT: "3000"
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6.4.0
-        with:
-          node-version: "24"
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Prisma generate
-        run: npx prisma generate
-
-      - name: Download standalone build
-        uses: actions/download-artifact@v4
-        with:
-          name: standalone-app
-          path: .next/standalone
+      - name: Install Playwright Chromium
+        if: github.event_name == 'push' && steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install chromium
 
       - name: E2E tests
+        if: github.event_name == 'push'
         run: npm run test:e2e
 
   merge-to-main:
     name: Merge develop → main
-    needs: e2e
+    needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     permissions:
