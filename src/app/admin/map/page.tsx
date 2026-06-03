@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { useTerritoryAssignments, useInvalidateAssignments, usePatchAssignments } from "@/hooks/useTerritoryAssignments";
+import { useTerritoryAssignments, usePatchAssignments, useRevertAssignments } from "@/hooks/useTerritoryAssignments";
 import { useMapEditorHistory } from "@/hooks/useMapEditorHistory";
 import { MapLegend } from "@/components/map/MapLegend";
 import { UndoRedoToolbar } from "@/components/map/editor/UndoRedoToolbar";
@@ -20,6 +20,7 @@ import type mapboxgl from "mapbox-gl";
 import { PolygonDrawTool } from "@/components/map/editor/PolygonDrawTool";
 import { StateMultiSelect } from "@/components/map/editor/StateMultiSelect";
 import { boundsForFeatures, countyFipsInStates, featuresInStates } from "@/lib/county-geo";
+import type { AssignmentMap } from "@/lib/queries/assignments";
 
 const MapboxMap = dynamic(
   () => import("@/components/map/MapboxMap").then((m) => m.MapboxMap),
@@ -39,8 +40,8 @@ type Territory = {
 
 export default function MapEditorPage() {
   const { data: assignments = {}, isLoading } = useTerritoryAssignments();
-  const invalidate = useInvalidateAssignments();
   const patchAssignments = usePatchAssignments();
+  const revertAssignments = useRevertAssignments();
   const { push, undo, canUndo, canRedo } = useMapEditorHistory();
 
   const [selectedFips, setSelectedFips] = useState<Set<string>>(new Set());
@@ -119,9 +120,17 @@ export default function MapEditorPage() {
     setAssignError(null);
 
     const fipsCodes = [...selectedFips];
+    const previousAssignments: Record<string, AssignmentMap[string] | null> = {};
     const previousTerritoryIds: Record<string, string | null> = {};
     for (const f of fipsCodes) {
-      previousTerritoryIds[f] = assignments[f]?.territoryId ?? null;
+      const key = f.padStart(5, "0").slice(-5);
+      previousAssignments[key] = assignments[key] ?? null;
+      previousTerritoryIds[key] = assignments[key]?.territoryId ?? null;
+    }
+
+    const territory = territories.find((t) => t.id === assignTerritoryId);
+    if (territory) {
+      patchAssignments(fipsCodes, territory);
     }
 
     const res = await fetch("/api/counties", {
@@ -132,15 +141,12 @@ export default function MapEditorPage() {
 
     setSaving(false);
     if (res.ok) {
-      const territory = territories.find((t) => t.id === assignTerritoryId);
-      if (territory) {
-        patchAssignments(fipsCodes, territory);
-      }
       push({ fipsCodes, previousTerritoryIds, newTerritoryId: assignTerritoryId });
       setSelectedFips(new Set());
-      void invalidate();
       return;
     }
+
+    revertAssignments(fipsCodes, previousAssignments);
 
     const body = await res.json().catch(() => ({}));
     setAssignError(typeof body.error === "string" ? body.error : "Assignment failed.");
@@ -161,7 +167,6 @@ export default function MapEditorPage() {
         });
       }
     }
-    void invalidate();
   };
 
   return (

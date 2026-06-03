@@ -47,14 +47,37 @@ export function patchAssignmentMap(
   fipsCodes: string[],
   territory: Parameters<typeof assignmentFromTerritory>[0] | null,
 ): AssignmentMap {
-  const next = { ...current };
+  const next: AssignmentMap = { ...current };
   const entry = territory ? assignmentFromTerritory(territory) : null;
   for (const fips of fipsCodes) {
     const key = fips.padStart(5, "0").slice(-5);
-    if (entry) next[key] = entry;
+    if (entry) next[key] = { ...entry };
     else delete next[key];
   }
   return next;
+}
+
+export function revertAssignmentMap(
+  current: AssignmentMap,
+  fipsCodes: string[],
+  previousByFips: Record<string, AssignmentMap[string] | null | undefined>,
+): AssignmentMap {
+  const next: AssignmentMap = { ...current };
+  for (const fips of fipsCodes) {
+    const key = fips.padStart(5, "0").slice(-5);
+    const prev = previousByFips[key];
+    if (prev) next[key] = { ...prev };
+    else delete next[key];
+  }
+  return next;
+}
+
+/** Stable key so Mapbox repaints when territory colors change on existing FIPS. */
+export function assignmentColorRevision(assignments: AssignmentMap): string {
+  return Object.entries(assignments)
+    .map(([fips, a]) => `${fips}:${a.territoryId}:${a.color}`)
+    .sort()
+    .join("|");
 }
 
 export function updateTerritoryInAssignmentMap(
@@ -75,5 +98,5 @@ export function updateTerritoryInAssignmentMap(
       changed = true;
     }
   }
-  return changed ? next : current;
+  return changed ? { ...next } : current;
 }

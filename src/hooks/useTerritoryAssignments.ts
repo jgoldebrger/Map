@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   fetchAssignments,
   patchAssignmentMap,
+  revertAssignmentMap,
   updateTerritoryInAssignmentMap,
   type AssignmentMap,
   type assignmentFromTerritory,
@@ -16,6 +17,7 @@ export function useTerritoryAssignments() {
     queryKey: ["assignments"],
     queryFn: fetchAssignments,
     staleTime: 0,
+    structuralSharing: false,
   });
 }
 
@@ -33,9 +35,20 @@ export function usePatchAssignments() {
   };
 }
 
+export function useRevertAssignments() {
+  const qc = useQueryClient();
+  return (
+    fipsCodes: string[],
+    previousByFips: Record<string, AssignmentMap[string] | null | undefined>,
+  ) => {
+    qc.setQueryData<AssignmentMap>(["assignments"], (current) =>
+      revertAssignmentMap(current ?? {}, fipsCodes, previousByFips),
+    );
+  };
+}
+
 export function useSyncTerritoryAssignments() {
   const qc = useQueryClient();
-  const refetch = useInvalidateAssignments();
   return (
     territoryId: string,
     updates: Parameters<typeof updateTerritoryInAssignmentMap>[2],
@@ -43,6 +56,5 @@ export function useSyncTerritoryAssignments() {
     qc.setQueryData<AssignmentMap>(["assignments"], (current) =>
       updateTerritoryInAssignmentMap(current ?? {}, territoryId, updates),
     );
-    void refetch();
   };
 }

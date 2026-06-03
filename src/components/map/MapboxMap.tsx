@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import type { AssignmentMap } from "@/lib/queries/assignments";
+import { assignmentColorRevision } from "@/lib/queries/assignments";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN?.trim() ?? "";
 
@@ -108,6 +109,7 @@ export function MapboxMap({
 
   const assignmentsRef = useRef(assignments);
   assignmentsRef.current = assignments;
+  const colorRevision = assignmentColorRevision(assignments);
 
   const onCountyClickRef = useRef(onCountyClick);
   onCountyClickRef.current = onCountyClick;
@@ -240,14 +242,15 @@ export function MapboxMap({
 
     const applyColors = () => {
       if (!map.isStyleLoaded()) return;
-      ensureCountyLayers(map, assignments);
+      ensureCountyLayers(map, assignmentsRef.current);
+      map.triggerRepaint();
     };
 
     applyColors();
     if (!map.isStyleLoaded()) {
       map.once("load", applyColors);
     }
-  }, [assignments]);
+  }, [colorRevision]);
 
   useEffect(() => {
     const map = mapRef.current;
