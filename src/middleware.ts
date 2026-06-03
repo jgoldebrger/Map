@@ -1,18 +1,25 @@
-import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
-import { authConfig } from "@/lib/auth.config";
+import type { NextRequest } from "next/server";
 
-const { auth } = NextAuth(authConfig);
+function hasSessionCookie(request: NextRequest): boolean {
+  const names = [
+    "authjs.session-token",
+    "__Secure-authjs.session-token",
+    "next-auth.session-token",
+    "__Secure-next-auth.session-token",
+  ];
+  return names.some((name) => request.cookies.has(name));
+}
 
-export default auth((req) => {
-  const { nextUrl } = req;
+export function middleware(request: NextRequest) {
+  const { nextUrl } = request;
 
-  // RSC flight requests cannot follow middleware redirects (causes 500 on Vercel)
+  // RSC flight requests cannot follow middleware redirects on Vercel
   if (nextUrl.searchParams.has("_rsc")) {
     return NextResponse.next();
   }
 
-  const isLoggedIn = !!req.auth;
+  const isLoggedIn = hasSessionCookie(request);
   const isAdmin = nextUrl.pathname.startsWith("/admin");
   const isLogin = nextUrl.pathname === "/login";
 
@@ -27,7 +34,7 @@ export default auth((req) => {
   }
 
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: ["/admin", "/admin/:path*", "/login"],
