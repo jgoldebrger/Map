@@ -33,7 +33,7 @@ test.describe("Health checks", () => {
     const res = await request.get("/api/zipcodes?page=1&limit=5");
     expect(res.ok()).toBeTruthy();
     const data = await res.json();
-    expect(Array.isArray(data.zipCodes)).toBeTruthy();
+    expect(Array.isArray(data.zips)).toBeTruthy();
     expect(typeof data.total).toBe("number");
   });
 
