@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,8 +9,7 @@ import {
   territoryInputFromForm,
   type TerritoryInput,
 } from "@/lib/validators/territory";
-import { WEEKDAYS, parseCutoffDay, parseShipDays, type Weekday } from "@/lib/weekdays";
-import { WeekdayMultiSelect } from "@/components/admin/WeekdayMultiSelect";
+import { WEEKDAYS, parseCutoffDay, parseShipDay, type Weekday } from "@/lib/weekdays";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +27,7 @@ const territoryFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   shippingMethodId: z.string().min(1, "Shipping method is required"),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Valid hex color required"),
+  shipDay: z.enum(WEEKDAYS).optional(),
   cutoffDay: z.enum(WEEKDAYS).optional(),
   notes: z.string().optional(),
   active: z.boolean().default(true),
@@ -46,10 +45,6 @@ type Props = {
 };
 
 export function TerritoryForm({ methods, defaultValues, onSubmit, onCancel }: Props) {
-  const [shipDays, setShipDays] = useState<Weekday[]>(() =>
-    parseShipDays(defaultValues?.shipDay),
-  );
-
   const form = useForm<TerritoryFormValues>({
     resolver: zodResolver(territoryFormSchema),
     defaultValues: {
@@ -57,6 +52,7 @@ export function TerritoryForm({ methods, defaultValues, onSubmit, onCancel }: Pr
       shippingMethodId: defaultValues?.shippingMethodId ?? "",
       color: defaultValues?.color ?? "#3B82F6",
       active: defaultValues?.active ?? true,
+      shipDay: parseShipDay(defaultValues?.shipDay),
       cutoffDay: parseCutoffDay(defaultValues?.cutoffDay),
       notes: defaultValues?.notes,
     },
@@ -75,10 +71,7 @@ export function TerritoryForm({ methods, defaultValues, onSubmit, onCancel }: Pr
   }
 
   const handleSubmit = async (data: TerritoryFormValues) => {
-    const payload = territoryInputFromForm({
-      ...data,
-      shipDays,
-    });
+    const payload = territoryInputFromForm(data);
     const parsed = territorySchema.safeParse(payload);
     if (!parsed.success) {
       return;
@@ -86,6 +79,7 @@ export function TerritoryForm({ methods, defaultValues, onSubmit, onCancel }: Pr
     await onSubmit(parsed.data);
   };
 
+  const shipDayValue = form.watch("shipDay");
   const cutoffValue = form.watch("cutoffDay");
 
   return (
@@ -123,12 +117,29 @@ export function TerritoryForm({ methods, defaultValues, onSubmit, onCancel }: Pr
         />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <WeekdayMultiSelect
-          label="Ship Days"
-          selected={shipDays}
-          onChange={setShipDays}
-          placeholder="Select ship days"
-        />
+        <div className="space-y-2">
+          <Label>Ship Day</Label>
+          <Select
+            value={shipDayValue ?? "_none"}
+            onValueChange={(v) =>
+              form.setValue("shipDay", v === "_none" ? undefined : (v as Weekday), {
+                shouldValidate: true,
+              })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select ship day" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_none">None</SelectItem>
+              {WEEKDAYS.map((day) => (
+                <SelectItem key={day} value={day}>
+                  {day}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="space-y-2">
           <Label>Cutoff Day</Label>
           <Select

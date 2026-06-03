@@ -24,16 +24,17 @@ export function parseShipDays(value?: string | null): Weekday[] {
     .filter((part): part is Weekday => isWeekday(part));
 }
 
-export function formatShipDays(days: readonly string[]): string | undefined {
-  const ordered = WEEKDAYS.filter((day) => days.includes(day));
-  if (ordered.length === 0) return undefined;
-  return ordered.join(", ");
-}
-
 export function parseCutoffDay(value?: string | null): Weekday | undefined {
   if (!value?.trim()) return undefined;
   const trimmed = value.trim();
   return isWeekday(trimmed) ? trimmed : undefined;
+}
+
+/** First weekday from stored ship day (handles legacy comma-separated values). */
+export function parseShipDay(value?: string | null): Weekday | undefined {
+  const days = parseShipDays(value);
+  if (days.length > 0) return days[0];
+  return parseCutoffDay(value);
 }
 
 /** Sort key for ship/cutoff columns: Mon=0 … Sun=6, empty/invalid last. */
