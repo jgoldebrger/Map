@@ -140,10 +140,17 @@ jobs:
     needs: merge-to-main
     if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
-    # Use repository secrets (Settings → Actions → Secrets), not Production environment secrets
+    environment: Production
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ vars.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      DATABASE_URL: ${{ vars.DATABASE_URL }}
+      DIRECT_URL: ${{ vars.DIRECT_URL }}
+      AUTH_SECRET: ${{ vars.AUTH_SECRET }}
+      AUTH_TRUST_HOST: "true"
     steps:
       - name: Checkout main
         uses: actions/checkout@v6.0.3
@@ -167,6 +174,9 @@ jobs:
 
       - name: Pull Vercel environment
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Prepare Vercel build environment
+        run: bash scripts/prepare-vercel-build-env.sh
 
       - name: Build for Vercel
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
