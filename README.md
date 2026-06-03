@@ -147,14 +147,16 @@ Without Docker/Postgres, UI smoke tests still run; API and auth tests are skippe
 
 ### Branch workflow
 
-| Branch | CI | Production deploy |
-|--------|-----|-------------------|
-| `develop` | Lint + build on push/PR | No |
-| `main` | Full tests (migrations, E2E) on push/PR | Yes, after CI passes |
+| Branch | What happens |
+|--------|----------------|
+| `develop` | Push here → full CI → auto-merge to `main` → Vercel production deploy |
+| `main` | Updated automatically by CI after `develop` passes (do not push directly) |
 
-Work on **`develop`** only — push all changes there. Open a PR to `main` when ready for production (full CI + deploy). Do not push directly to `main`.
+Work on **`develop` only**. Pushes to `develop` run [`.github/workflows/ci-deploy.yml`](.github/workflows/ci-deploy.yml): tests, merge to `main`, then deploy. PRs run lint + build only (no merge/deploy).
 
-**Automatic deploy:** pushes to `main` run [`.github/workflows/ci-deploy.yml`](.github/workflows/ci-deploy.yml) (tests, then production deploy). Add these [GitHub Actions secrets](https://github.com/jgoldebrger/Map/settings/secrets/actions):
+**GitHub repo settings:** allow GitHub Actions to push to `main` (Settings → Actions → General → Workflow permissions → *Read and write*).
+
+**Automatic deploy** requires these [GitHub Actions secrets](https://github.com/jgoldebrger/Map/settings/secrets/actions):
 
 | Secret | Purpose |
 |--------|---------|

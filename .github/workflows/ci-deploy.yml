@@ -1,6 +1,6 @@
 # Branch workflow:
-#   develop  — lint + build on push/PR (no prod DB migrations, no deploy)
-#   main     — full test suite + Vercel production deploy (after tests pass)
+#   develop  — push here; full CI runs, then auto-merge to main + Vercel deploy
+#   main     — updated only by CI after develop passes (no direct pushes)
 #
 # App config: GitHub → Settings → Environments → Production → Variables
 #   DATABASE_URL, DIRECT_URL, AUTH_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD,
@@ -12,13 +12,16 @@ name: CI & Deploy
 
 on:
   push:
-    branches: [main, develop]
+    branches: [develop]
   pull_request:
     branches: [main, develop]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -57,7 +60,7 @@ jobs:
         run: npx prisma generate
 
       - name: Check Production environment variables
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'
+        if: github.event_name == 'push'
         run: |
           echo "DATABASE_URL: ${{ vars.DATABASE_URL != '' && 'yes' || 'MISSING' }}"
           echo "DIRECT_URL: ${{ vars.DIRECT_URL != '' && 'yes' || 'MISSING' }}"
@@ -67,15 +70,15 @@ jobs:
           echo "NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ vars.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN != '' && 'yes' || 'MISSING' }}"
 
       - name: Validate CI secrets
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'
+        if: github.event_name == 'push'
         run: bash scripts/validate-ci-env.sh
 
       - name: Apply migrations
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'
+        if: github.event_name == 'push'
         run: npx prisma migrate deploy
 
       - name: Seed admin user
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'
+        if: github.event_name == 'push'
         run: npm run db:seed
 
       - name: Lint
@@ -85,33 +88,58 @@ jobs:
         run: npm run build
 
       - name: Install Playwright browser
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'
+        if: github.event_name == 'push'
         run: npx playwright install --with-deps chromium
 
       - name: Prepare standalone app for E2E
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'
+        if: github.event_name == 'push'
         run: bash scripts/prepare-standalone-e2e.sh
 
       - name: E2E tests
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'
+        if: github.event_name == 'push'
         run: npm run test:e2e
         env:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
           PLAYWRIGHT_HOST: 127.0.0.1
           PLAYWRIGHT_PORT: "3000"
 
+  merge-to-main:
+    name: Merge develop → main
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge develop into main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main develop
+          git checkout main
+          git merge origin/develop --no-edit -m "chore: promote develop to main"
+          git push origin main
+
   deploy:
     name: Deploy to Vercel
-    needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: merge-to-main
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     environment: Production
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
-      - name: Checkout
+      - name: Checkout main
         uses: actions/checkout@v6.0.3
+        with:
+          ref: main
 
       - name: Setup Node.js
         uses: actions/setup-node@v6.4.0
