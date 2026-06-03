@@ -30,8 +30,8 @@ export default defineConfig({
         url: baseURL,
         reuseExistingServer: !isCi,
         timeout: 180_000,
-        stdout: isCi ? "inherit" : "pipe",
-        stderr: isCi ? "inherit" : "pipe",
+        stdout: "pipe",
+        stderr: "pipe",
         env: {
           ...process.env,
           HOSTNAME: host,
