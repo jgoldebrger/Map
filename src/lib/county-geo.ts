@@ -53,6 +53,38 @@ export function featuresInState(
   });
 }
 
+/** County FIPS across multiple USPS states */
+export function countyFipsInStates(
+  features: GeoJSON.Feature[],
+  stateAbbrs: Iterable<string>,
+): string[] {
+  const seen = new Set<string>();
+  for (const abbr of stateAbbrs) {
+    for (const fips of countyFipsInState(features, abbr)) {
+      seen.add(fips);
+    }
+  }
+  return [...seen];
+}
+
+/** GeoJSON features across multiple USPS states */
+export function featuresInStates(
+  features: GeoJSON.Feature[],
+  stateAbbrs: Iterable<string>,
+): GeoJSON.Feature[] {
+  const seen = new Set<string>();
+  const result: GeoJSON.Feature[] = [];
+  for (const abbr of stateAbbrs) {
+    for (const feature of featuresInState(features, abbr)) {
+      const fips = fipsFromGeoFeature(feature);
+      if (!fips || seen.has(fips)) continue;
+      seen.add(fips);
+      result.push(feature);
+    }
+  }
+  return result;
+}
+
 export function boundsForFeatures(
   features: GeoJSON.Feature[],
 ): [[number, number], [number, number]] | null {

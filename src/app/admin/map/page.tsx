@@ -18,8 +18,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import type mapboxgl from "mapbox-gl";
 import { PolygonDrawTool } from "@/components/map/editor/PolygonDrawTool";
-import { US_STATES } from "@/lib/us-states";
-import { boundsForFeatures, countyFipsInState, featuresInState } from "@/lib/county-geo";
+import { StateMultiSelect } from "@/components/map/editor/StateMultiSelect";
+import { boundsForFeatures, countyFipsInStates, featuresInStates } from "@/lib/county-geo";
 
 const MapboxMap = dynamic(
   () => import("@/components/map/MapboxMap").then((m) => m.MapboxMap),
@@ -51,7 +51,7 @@ export default function MapEditorPage() {
   const [polygonMode, setPolygonMode] = useState(false);
   const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null);
   const [countyFeatures, setCountyFeatures] = useState<GeoJSON.Feature[]>([]);
-  const [statePicker, setStatePicker] = useState<string>("");
+  const [statePicker, setStatePicker] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetch("/geo/us-counties.geojson")
@@ -94,8 +94,8 @@ export default function MapEditorPage() {
 
   const selectStateCounties = useCallback(
     (mode: "add" | "replace") => {
-      if (!statePicker) return;
-      const fips = countyFipsInState(countyFeatures, statePicker);
+      if (statePicker.size === 0) return;
+      const fips = countyFipsInStates(countyFeatures, statePicker);
       if (fips.length === 0) return;
 
       if (mode === "replace") {
@@ -105,7 +105,7 @@ export default function MapEditorPage() {
       }
       setAssignError(null);
 
-      const bounds = boundsForFeatures(featuresInState(countyFeatures, statePicker));
+      const bounds = boundsForFeatures(featuresInStates(countyFeatures, statePicker));
       if (bounds && mapInstance) {
         mapInstance.fitBounds(bounds, { padding: 48, duration: 800, maxZoom: 7 });
       }
@@ -170,44 +170,30 @@ export default function MapEditorPage() {
         <div>
           <h1 className="text-xl font-bold">Map Editor</h1>
           <p className="text-sm text-muted-foreground">
-            Click counties, Shift+drag a box, draw a polygon, or select a full state. Assigning
-            sets territory and shipping method (via territory).
+            Click counties, Shift+drag a box, draw a polygon, or select one or more states.
+            Assigning sets territory and shipping method (via territory).
           </p>
         </div>
         <div className="flex-1" />
         <div className="flex flex-col items-end gap-2">
           <div className="flex flex-wrap items-end gap-2">
-            <div className="space-y-1">
-              <Label className="text-xs">State</Label>
-              <Select value={statePicker} onValueChange={setStatePicker}>
-                <SelectTrigger className="w-24">
-                  <SelectValue placeholder="ST" />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  {US_STATES.map(({ code }) => (
-                    <SelectItem key={code} value={code}>
-                      {code}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <StateMultiSelect selected={statePicker} onChange={setStatePicker} />
             <Button
               type="button"
               variant="outline"
-              disabled={!statePicker}
+              disabled={statePicker.size === 0}
               onClick={() => selectStateCounties("replace")}
             >
-              Select state
+              Select states
             </Button>
             <Button
               type="button"
               variant="ghost"
-              disabled={!statePicker}
+              disabled={statePicker.size === 0}
               onClick={() => selectStateCounties("add")}
               className="text-muted-foreground"
             >
-              Add state
+              Add states
             </Button>
             <div className="space-y-1">
               <Label className="text-xs">Assign to</Label>
