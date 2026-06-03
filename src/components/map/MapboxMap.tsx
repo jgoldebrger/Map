@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import type { AssignmentMap } from "@/lib/queries/assignments";
 
-mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? "";
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN?.trim() ?? "";
 
 export type MapMode = "view" | "edit";
 
@@ -122,8 +122,9 @@ export function MapboxMap({
   onMapReadyRef.current = onMapReady;
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    if (!containerRef.current || mapRef.current || !MAPBOX_TOKEN) return;
 
+    mapboxgl.accessToken = MAPBOX_TOKEN;
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: "mapbox://styles/mapbox/light-v11",
@@ -250,6 +251,17 @@ export function MapboxMap({
     const fips = selectedFips ? [...selectedFips] : [];
     map.setFilter("counties-selected", ["in", ["get", "GEOID"], ["literal", fips]]);
   }, [selectedFips]);
+
+  if (!MAPBOX_TOKEN) {
+    return (
+      <div
+        className={`flex items-center justify-center bg-slate-100 text-center p-6 text-sm text-muted-foreground ${className ?? ""}`}
+      >
+        Map unavailable: set <code className="mx-1">NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN</code> in Vercel
+        environment variables and redeploy.
+      </div>
+    );
+  }
 
   return (
     <div className={className ?? "relative h-full w-full"}>
