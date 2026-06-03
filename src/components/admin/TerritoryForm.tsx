@@ -1,9 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { territorySchema, type TerritoryInput } from "@/lib/validators/territory";
+import { z } from "zod";
+import {
+  territorySchema,
+  territoryInputFromForm,
+  type TerritoryInput,
+} from "@/lib/validators/territory";
+import { WEEKDAYS, parseCutoffDay, parseShipDays, type Weekday } from "@/lib/weekdays";
+import { WeekdayMultiSelect } from "@/components/admin/WeekdayMultiSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +25,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+const territoryFormSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  shippingMethodId: z.string().min(1, "Shipping method is required"),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Valid hex color required"),
+  cutoffDay: z.enum(WEEKDAYS).optional(),
+  notes: z.string().optional(),
+  active: z.boolean().default(true),
+});
+
+type TerritoryFormValues = z.infer<typeof territoryFormSchema>;
+
 type ShippingMethod = { id: string; name: string };
 
 type Props = {
@@ -27,13 +46,19 @@ type Props = {
 };
 
 export function TerritoryForm({ methods, defaultValues, onSubmit, onCancel }: Props) {
-  const form = useForm<TerritoryInput>({
-    resolver: zodResolver(territorySchema),
+  const [shipDays, setShipDays] = useState<Weekday[]>(() =>
+    parseShipDays(defaultValues?.shipDay),
+  );
+
+  const form = useForm<TerritoryFormValues>({
+    resolver: zodResolver(territoryFormSchema),
     defaultValues: {
-      name: "",
-      color: "#3B82F6",
-      active: true,
-      ...defaultValues,
+      name: defaultValues?.name ?? "",
+      shippingMethodId: defaultValues?.shippingMethodId ?? "",
+      color: defaultValues?.color ?? "#3B82F6",
+      active: defaultValues?.active ?? true,
+      cutoffDay: parseCutoffDay(defaultValues?.cutoffDay),
+      notes: defaultValues?.notes,
     },
   });
 
@@ -49,8 +74,22 @@ export function TerritoryForm({ methods, defaultValues, onSubmit, onCancel }: Pr
     );
   }
 
+  const handleSubmit = async (data: TerritoryFormValues) => {
+    const payload = territoryInputFromForm({
+      ...data,
+      shipDays,
+    });
+    const parsed = territorySchema.safeParse(payload);
+    if (!parsed.success) {
+      return;
+    }
+    await onSubmit(parsed.data);
+  };
+
+  const cutoffValue = form.watch("cutoffDay");
+
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
       <div className="space-y-2">
         <Label>Name</Label>
         <Input {...form.register("name")} />
@@ -83,14 +122,35 @@ export function TerritoryForm({ methods, defaultValues, onSubmit, onCancel }: Pr
           error={form.formState.errors.color?.message}
         />
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Ship Day</Label>
-          <Input {...form.register("shipDay")} placeholder="Monday" />
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <WeekdayMultiSelect
+          label="Ship Days"
+          selected={shipDays}
+          onChange={setShipDays}
+          placeholder="Select ship days"
+        />
         <div className="space-y-2">
           <Label>Cutoff Day</Label>
-          <Input {...form.register("cutoffDay")} placeholder="Friday" />
+          <Select
+            value={cutoffValue ?? "_none"}
+            onValueChange={(v) =>
+              form.setValue("cutoffDay", v === "_none" ? undefined : (v as Weekday), {
+                shouldValidate: true,
+              })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select cutoff day" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_none">None</SelectItem>
+              {WEEKDAYS.map((day) => (
+                <SelectItem key={day} value={day}>
+                  {day}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
       <div className="space-y-2">
