@@ -62,8 +62,15 @@ test.describe("Health checks", () => {
     expect(Array.isArray(data)).toBeTruthy();
   });
 
-  test("lookup returns 404 for unknown type", async ({ request }) => {
+  test("lookup returns 400 for invalid type", async ({ request }) => {
     const res = await request.get("/api/lookup?type=invalid&q=test");
+    expect(res.status()).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBeTruthy();
+  });
+
+  test("lookup returns 404 when no results found", async ({ request }) => {
+    const res = await request.get("/api/lookup?type=zip&q=00000");
     expect(res.status()).toBe(404);
   });
 });
