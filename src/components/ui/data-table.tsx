@@ -238,7 +238,7 @@ export function DataTable<T>({
 
     for (const col of columns) {
       const fv = columnFilters[col.id]?.trim().toLowerCase();
-      if (!fv || !col.filterable) continue;
+      if (!fv || col.filterable === false) continue;
       rows = rows.filter((row) => getSortValue(row, col).toString().includes(fv));
     }
 
