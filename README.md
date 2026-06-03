@@ -145,6 +145,15 @@ Without Docker/Postgres, UI smoke tests still run; API and auth tests are skippe
 
 ### Vercel (Frontend + API)
 
+### Branch workflow
+
+| Branch | CI | Production deploy |
+|--------|-----|-------------------|
+| `develop` | Lint + build on push/PR | No |
+| `main` | Full tests (migrations, E2E) on push/PR | Yes, after CI passes |
+
+Work on `develop` (or feature branches → PR into `develop`). When ready for production, open a PR from `develop` → `main`. Vercel auto-deploy on `main` is disabled in `vercel.json`; only the GitHub Actions deploy job publishes production.
+
 **Automatic deploy:** pushes to `main` run [`.github/workflows/ci-deploy.yml`](.github/workflows/ci-deploy.yml) (tests, then production deploy). Add these [GitHub Actions secrets](https://github.com/jgoldebrger/Map/settings/secrets/actions):
 
 | Secret | Purpose |
