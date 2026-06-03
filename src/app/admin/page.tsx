@@ -6,6 +6,7 @@ import { Layers, MapPin, Hash, Truck, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
+import { usePermissions } from "@/hooks/usePermissions";
 
 type Stats = {
   shippingMethods: number;
@@ -24,6 +25,7 @@ type Stats = {
 };
 
 export default function AdminDashboard() {
+  const { canWrite, hasPermission } = usePermissions();
   const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
@@ -47,7 +49,13 @@ export default function AdminDashboard() {
           href="/admin/shipping-methods"
         />
         <StatCard icon={Layers} label="Territories" value={stats?.territories} href="/admin/territories" />
-        <StatCard icon={MapPin} label="Counties" value={stats?.counties} href="/admin/map" />
+        <StatCard
+          icon={MapPin}
+          label="Counties"
+          value={stats?.counties}
+          href={hasPermission("county:assign") ? "/admin/map" : "/map"}
+          linkLabel={canWrite ? "Manage" : "View map"}
+        />
         <StatCard icon={Hash} label="ZIP Codes" value={stats?.zipCodes} href="/admin/zipcodes" />
       </div>
 
@@ -94,11 +102,13 @@ function StatCard({
   label,
   value,
   href,
+  linkLabel = "Manage",
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value?: number;
   href: string;
+  linkLabel?: string;
 }) {
   return (
     <Card>
@@ -109,7 +119,7 @@ function StatCard({
       <CardContent>
         <p className="text-3xl font-bold">{value ?? "—"}</p>
         <Button variant="link" className="px-0 mt-2" asChild>
-          <Link href={href}>Manage</Link>
+          <Link href={href}>{linkLabel}</Link>
         </Button>
       </CardContent>
     </Card>

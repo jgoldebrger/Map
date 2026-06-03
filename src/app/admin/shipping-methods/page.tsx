@@ -19,6 +19,7 @@ import {
   shippingMethodSchema,
   type ShippingMethodInput,
 } from "@/lib/validators/shipping-method";
+import { usePermissions } from "@/hooks/usePermissions";
 
 type ShippingMethod = {
   id: string;
@@ -29,6 +30,7 @@ type ShippingMethod = {
 };
 
 export default function ShippingMethodsPage() {
+  const { canWrite } = usePermissions();
   const [methods, setMethods] = useState<ShippingMethod[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ShippingMethod | null>(null);
@@ -132,24 +134,25 @@ export default function ShippingMethodsPage() {
         sortable: false,
         filterable: false,
         className: "w-24",
-        cell: (m) => (
-          <div className="flex gap-1">
-            <Button variant="ghost" size="icon" onClick={() => openEdit(m)}>
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleDelete(m.id)}
-              disabled={m._count.territories > 0}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        ),
+        cell: (m) =>
+          canWrite ? (
+            <div className="flex gap-1">
+              <Button variant="ghost" size="icon" onClick={() => openEdit(m)}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleDelete(m.id)}
+                disabled={m._count.territories > 0}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : null,
       },
     ],
-    [handleDelete, openEdit],
+    [canWrite, handleDelete, openEdit],
   );
 
   return (
@@ -162,10 +165,12 @@ export default function ShippingMethodsPage() {
             method.
           </p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-1" />
-          Add Method
-        </Button>
+        {canWrite && (
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-1" />
+            Add Method
+          </Button>
+        )}
       </div>
 
       <DataTable

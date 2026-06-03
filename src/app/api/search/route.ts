@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { searchSchema } from "@/lib/validators/search";
 
 export async function GET(request: NextRequest) {
-  const q = request.nextUrl.searchParams.get("q")?.trim() ?? "";
-  if (q.length < 2) {
+  const parsed = searchSchema.safeParse({
+    q: request.nextUrl.searchParams.get("q") ?? "",
+  });
+  if (!parsed.success) {
     return NextResponse.json([]);
   }
+
+  const q = parsed.data.q;
 
   const [counties, zips, territories] = await Promise.all([
     prisma.county.findMany({

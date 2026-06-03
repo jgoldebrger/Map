@@ -6,6 +6,7 @@ export type Permission =
   | "zip:import"
   | "import:run"
   | "audit:read"
+  /** Reserved for future user-management APIs (SUPER_ADMIN only). */
   | "user:manage";
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {

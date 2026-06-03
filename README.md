@@ -214,6 +214,13 @@ Preview validates all rows before commit. Failed imports roll back.
 
 Every US county belongs to exactly one **Territory**. Territories belong to a **Shipping Method** (CCLT, CCDT, FT, Common Carrier). The map colors counties client-side from `/api/counties/assignments` — territory edits do not require tile regeneration.
 
+## Security
+
+- **RBAC:** Admin APIs enforce permissions (`audit:read`, `territory:write`, etc.). `READ_ONLY` users see dashboard, lists, ZIP codes, and audit log only — write actions and Import/Map Editor are hidden and blocked server-side.
+- **Rate limits (middleware):** Login attempts — 10 per IP per 15 minutes; public `/api/search` and `/api/lookup` — 60 per IP per minute.
+- **Secrets:** Store `DATABASE_URL`, `AUTH_SECRET`, `ADMIN_PASSWORD`, and Mapbox tokens in [GitHub Actions secrets](https://github.com/jgoldebrger/Map/settings/secrets/actions), not repository variables. CI reads secrets first, then falls back to variables during migration.
+- **Production:** Set `ADMIN_PASSWORD` on Vercel (never use default credentials). Rotate any secrets that were ever committed or exposed in logs.
+
 ## License
 
 Proprietary — Fabuwood internal use.

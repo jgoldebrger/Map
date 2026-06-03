@@ -15,19 +15,41 @@ import {
 import { cn } from "@/lib/utils";
 import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/hooks/usePermissions";
+import type { Permission } from "@/lib/permissions";
 
-const links = [
+const allLinks: {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  permission?: Permission;
+}[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/shipping-methods", label: "Shipping Methods", icon: Truck },
   { href: "/admin/territories", label: "Territories", icon: Layers },
-  { href: "/admin/map", label: "Map Editor", icon: Map },
+  {
+    href: "/admin/map",
+    label: "Map Editor",
+    icon: Map,
+    permission: "county:assign",
+  },
   { href: "/admin/zipcodes", label: "ZIP Codes", icon: MapPin },
-  { href: "/admin/import", label: "Import", icon: FileUp },
+  {
+    href: "/admin/import",
+    label: "Import",
+    icon: FileUp,
+    permission: "import:run",
+  },
   { href: "/admin/audit", label: "Audit Log", icon: History },
 ];
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const { hasPermission, role } = usePermissions();
+
+  const links = allLinks.filter(
+    (link) => !link.permission || hasPermission(link.permission)
+  );
 
   return (
     <aside className="flex w-56 flex-col border-r bg-white h-full">
@@ -36,6 +58,9 @@ export function AdminSidebar() {
           SIP Admin
         </Link>
         <p className="text-xs text-muted-foreground">Fabuwood Logistics</p>
+        {role === "READ_ONLY" && (
+          <p className="text-xs text-amber-600 mt-1">Read-only access</p>
+        )}
       </div>
       <nav className="flex-1 p-2 space-y-0.5">
         {links.map(({ href, label, icon: Icon }) => (

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { TerritoryForm } from "@/components/admin/TerritoryForm";
 import type { TerritoryInput } from "@/lib/validators/territory";
+import { usePermissions } from "@/hooks/usePermissions";
 
 type Territory = {
   id: string;
@@ -28,6 +29,7 @@ type Territory = {
 type Method = { id: string; name: string };
 
 export default function TerritoriesPage() {
+  const { canWrite } = usePermissions();
   const [territories, setTerritories] = useState<Territory[]>([]);
   const [methods, setMethods] = useState<Method[]>([]);
   const [open, setOpen] = useState(false);
@@ -123,31 +125,32 @@ export default function TerritoriesPage() {
         sortable: false,
         filterable: false,
         className: "w-24",
-        cell: (t) => (
-          <div className="flex gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                setEditing(t);
-                setOpen(true);
-              }}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleDelete(t.id)}
-              disabled={t._count.assignments > 0}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        ),
+        cell: (t) =>
+          canWrite ? (
+            <div className="flex gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setEditing(t);
+                  setOpen(true);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleDelete(t.id)}
+                disabled={t._count.assignments > 0}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : null,
       },
     ],
-    [handleDelete],
+    [canWrite, handleDelete],
   );
 
   return (
@@ -157,15 +160,17 @@ export default function TerritoriesPage() {
           <h1 className="text-2xl font-bold">Territories</h1>
           <p className="text-muted-foreground">Manage shipping territories and routes</p>
         </div>
-        <Button
-          onClick={() => {
-            setEditing(null);
-            setOpen(true);
-          }}
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          Add Territory
-        </Button>
+        {canWrite && (
+          <Button
+            onClick={() => {
+              setEditing(null);
+              setOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Add Territory
+          </Button>
+        )}
       </div>
 
       <DataTable
