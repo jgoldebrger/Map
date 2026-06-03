@@ -4,8 +4,12 @@ import { auth } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { shippingMethodSchema } from "@/lib/validators/shipping-method";
 import { writeAuditLog } from "@/lib/audit";
+import { requirePermission } from "@/lib/api-auth";
 
 export async function GET() {
+  const authResult = await requirePermission("audit:read");
+  if ("error" in authResult) return authResult.error;
+
   const methods = await prisma.shippingMethod.findMany({
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     include: {

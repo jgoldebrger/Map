@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/api-auth";
 
 function parsePositiveInt(value: string | null, fallback: number, max: number): number {
   const n = Number(value);
@@ -8,6 +9,9 @@ function parsePositiveInt(value: string | null, fallback: number, max: number): 
 }
 
 export async function GET(request: NextRequest) {
+  const authResult = await requirePermission("audit:read");
+  if ("error" in authResult) return authResult.error;
+
   const q = request.nextUrl.searchParams.get("q");
   const page = parsePositiveInt(request.nextUrl.searchParams.get("page"), 1, 10_000);
   const limit = parsePositiveInt(request.nextUrl.searchParams.get("limit"), 25, 500);

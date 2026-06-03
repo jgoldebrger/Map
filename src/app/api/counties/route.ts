@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { writeAuditLog } from "@/lib/audit";
 import { z } from "zod";
+import { requirePermission } from "@/lib/api-auth";
 
 const bulkAssignSchema = z.object({
   fipsCodes: z.array(z.string()).min(1),
@@ -11,6 +12,9 @@ const bulkAssignSchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
+  const authResult = await requirePermission("audit:read");
+  if ("error" in authResult) return authResult.error;
+
   const bbox = request.nextUrl.searchParams.get("bbox");
   const polygon = request.nextUrl.searchParams.get("polygon");
 

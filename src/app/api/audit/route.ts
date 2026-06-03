@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authResult = await requirePermission("audit:read");
+  if ("error" in authResult) return authResult.error;
 
   const page = Number(request.nextUrl.searchParams.get("page") ?? 1);
   const entityType = request.nextUrl.searchParams.get("entityType");

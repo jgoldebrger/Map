@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { isDbReady } from "./db-ready";
+import { loginAsAdmin } from "./helpers/auth";
 
 test.describe("Health checks", () => {
   test.beforeEach(({ }, testInfo) => {
@@ -16,8 +17,20 @@ test.describe("Health checks", () => {
     expect(body === null || typeof body === "object").toBeTruthy();
   });
 
-  test("stats API returns dashboard counts", async ({ request }) => {
-    const res = await request.get("/api/stats");
+  test("public health endpoint responds", async ({ request }) => {
+    const res = await request.get("/api/health");
+    expect(res.ok()).toBeTruthy();
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+  });
+
+  test("stats API requires authentication", async ({ request }) => {
+    expect((await request.get("/api/stats")).status()).toBe(401);
+  });
+
+  test("stats API returns dashboard data when authenticated", async ({ page }) => {
+    await loginAsAdmin(page);
+    const res = await page.request.get("/api/stats");
     expect(res.ok()).toBeTruthy();
     const data = await res.json();
     expect(data).toMatchObject({
@@ -29,8 +42,13 @@ test.describe("Health checks", () => {
     });
   });
 
-  test("zipcodes API supports pagination", async ({ request }) => {
-    const res = await request.get("/api/zipcodes?page=1&limit=5");
+  test("zipcodes API requires authentication", async ({ request }) => {
+    expect((await request.get("/api/zipcodes?page=1&limit=5")).status()).toBe(401);
+  });
+
+  test("zipcodes API supports pagination when authenticated", async ({ page }) => {
+    await loginAsAdmin(page);
+    const res = await page.request.get("/api/zipcodes?page=1&limit=5");
     expect(res.ok()).toBeTruthy();
     const data = await res.json();
     expect(Array.isArray(data.zips)).toBeTruthy();

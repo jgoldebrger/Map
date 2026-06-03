@@ -5,6 +5,8 @@ import { hasPermission } from "@/lib/permissions";
 import { territorySchema } from "@/lib/validators/territory";
 import { writeAuditLog } from "@/lib/audit";
 
+const MAX_CSV_CHARS = 2 * 1024 * 1024;
+
 function parseCsv(text: string): Record<string, string>[] {
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
   if (lines.length < 2) return [];
@@ -33,6 +35,9 @@ export async function POST(
   const { csv, preview } = body as { csv: string; preview?: boolean };
 
   if (!csv) return NextResponse.json({ error: "CSV required" }, { status: 400 });
+  if (csv.length > MAX_CSV_CHARS) {
+    return NextResponse.json({ error: "CSV exceeds 2MB limit" }, { status: 413 });
+  }
 
   const rows = parseCsv(csv);
   const errors: { row: number; message: string }[] = [];

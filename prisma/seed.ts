@@ -6,11 +6,21 @@ config();
 
 const prisma = new PrismaClient();
 
+function requireAdminPassword(): string {
+  const password = process.env.ADMIN_PASSWORD?.trim();
+  if (password) return password;
+  if (process.env.NODE_ENV === "production" || process.env.CI === "true") {
+    throw new Error("ADMIN_PASSWORD is required in production and CI");
+  }
+  console.warn("WARNING: Using default dev password — set ADMIN_PASSWORD in .env");
+  return "changeme";
+}
+
 async function main() {
   console.log("Seeding SIP database...");
 
-  const adminEmail = process.env.ADMIN_EMAIL ?? "jgoldberger@fabuwood.com";
-  const adminPassword = process.env.ADMIN_PASSWORD ?? "changeme";
+  const adminEmail = process.env.ADMIN_EMAIL?.trim() || "admin@example.com";
+  const adminPassword = requireAdminPassword();
   const passwordHash = await bcrypt.hash(adminPassword, 12);
 
   await prisma.user.upsert({

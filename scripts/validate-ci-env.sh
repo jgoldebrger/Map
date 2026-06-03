@@ -22,7 +22,7 @@ AUTH_SECRET="$(trim "${AUTH_SECRET:-}")"
 ADMIN_EMAIL="$(trim "${ADMIN_EMAIL:-}")"
 ADMIN_PASSWORD="$(trim "${ADMIN_PASSWORD:-}")"
 
-[ -n "$DATABASE_URL" ] || fail "DATABASE_URL is empty. Add it under Settings → Environments → Production → Variables (or repository Secrets)."
+[ -n "$DATABASE_URL" ] || fail "DATABASE_URL is empty. Add it under GitHub Production Secrets (preferred) or Variables."
 
 [ -n "$DIRECT_URL" ] || fail "DIRECT_URL is empty. Add Supabase Session/Direct URI (port 5432) — separate from DATABASE_URL."
 

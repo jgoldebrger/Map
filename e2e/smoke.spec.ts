@@ -29,23 +29,17 @@ test.describe("Public API", () => {
     }
   });
 
-  test("shipping methods API returns a list", async ({ request }) => {
-    const res = await request.get("/api/shipping-methods");
-    expect(res.ok()).toBeTruthy();
-    const data = await res.json();
-    expect(Array.isArray(data)).toBeTruthy();
+  test("admin list APIs require authentication", async ({ request }) => {
+    expect((await request.get("/api/shipping-methods")).status()).toBe(401);
+    expect((await request.get("/api/territories")).status()).toBe(401);
   });
 
-  test("territory lookup works when territories exist", async ({ request }, testInfo) => {
-    const listRes = await request.get("/api/territories");
-    expect(listRes.ok()).toBeTruthy();
-    const territories = await listRes.json();
-    if (!Array.isArray(territories) || territories.length === 0) {
-      testInfo.skip(true, "No territories in database");
+  test("lookup by territory name when data exists", async ({ request }, testInfo) => {
+    const res = await request.get("/api/lookup?type=territory&q=test");
+    if (res.status() === 404) {
+      testInfo.skip(true, "No matching territory in database");
       return;
     }
-    const name = territories[0].name as string;
-    const res = await request.get(`/api/lookup?type=territory&q=${encodeURIComponent(name)}`);
     expect(res.ok()).toBeTruthy();
     const data = await res.json();
     expect(data.territory).toBeTruthy();
