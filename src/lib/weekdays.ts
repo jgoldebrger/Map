@@ -35,3 +35,14 @@ export function parseCutoffDay(value?: string | null): Weekday | undefined {
   const trimmed = value.trim();
   return isWeekday(trimmed) ? trimmed : undefined;
 }
+
+/** Sort key for ship/cutoff columns: Mon=0 … Sun=6, empty/invalid last. */
+export function weekdaySortIndex(value?: string | null): number {
+  const days = parseShipDays(value);
+  if (days.length > 0) {
+    return Math.min(...days.map((day) => WEEKDAYS.indexOf(day)));
+  }
+  const single = parseCutoffDay(value);
+  if (single) return WEEKDAYS.indexOf(single);
+  return 999;
+}

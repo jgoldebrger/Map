@@ -15,6 +15,7 @@ import { TerritoryForm } from "@/components/admin/TerritoryForm";
 import type { TerritoryInput } from "@/lib/validators/territory";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useSyncTerritoryAssignments } from "@/hooks/useTerritoryAssignments";
+import { weekdaySortIndex } from "@/lib/weekdays";
 
 type Territory = {
   id: string;
@@ -116,12 +117,14 @@ export default function TerritoriesPage() {
         id: "shipDay",
         header: "Ship Day",
         accessor: (t) => t.shipDay ?? "",
+        sortValue: (t) => weekdaySortIndex(t.shipDay),
         cell: (t) => t.shipDay ?? "—",
       },
       {
         id: "cutoff",
         header: "Cutoff",
         accessor: (t) => t.cutoffDay ?? "",
+        sortValue: (t) => weekdaySortIndex(t.cutoffDay),
         cell: (t) => t.cutoffDay ?? "—",
       },
       {

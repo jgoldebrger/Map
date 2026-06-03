@@ -40,6 +40,8 @@ export type DataTableColumn<T> = {
   enableHiding?: boolean;
   className?: string;
   headerClassName?: string;
+  /** Custom numeric/string key for sorting; filtering still uses accessor */
+  sortValue?: (row: T) => string | number;
 };
 
 export type DataTableProps<T> = {
@@ -79,7 +81,15 @@ export type DataTableProps<T> = {
 
 export type SortState = { id: string; desc: boolean } | null;
 
+function getFilterValue<T>(row: T, col: DataTableColumn<T>): string {
+  if (!col.accessor) return "";
+  const v = col.accessor(row);
+  if (v == null) return "";
+  return String(v).toLowerCase();
+}
+
 function getSortValue<T>(row: T, col: DataTableColumn<T>): string | number {
+  if (col.sortValue) return col.sortValue(row);
   if (!col.accessor) return "";
   const v = col.accessor(row);
   if (v == null) return "";
@@ -231,7 +241,7 @@ export function DataTable<T>({
       rows = rows.filter((row) =>
         columns.some((col) => {
           if (columnVisibility[col.id] === false) return false;
-          return getSortValue(row, col).toString().includes(gf);
+          return getFilterValue(row, col).includes(gf);
         }),
       );
     }
@@ -239,7 +249,7 @@ export function DataTable<T>({
     for (const col of columns) {
       const fv = columnFilters[col.id]?.trim().toLowerCase();
       if (!fv || col.filterable === false) continue;
-      rows = rows.filter((row) => getSortValue(row, col).toString().includes(fv));
+      rows = rows.filter((row) => getFilterValue(row, col).includes(fv));
     }
 
     if (sort) {
