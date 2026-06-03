@@ -31,7 +31,7 @@ DATABASE_URL="postgresql://sip:sip@localhost:5432/sip?schema=public"
 AUTH_SECRET="your-secret-at-least-32-chars"
 NEXTAUTH_URL="http://localhost:3000"
 NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN="pk.your_token"
-ADMIN_EMAIL="jgoldberger@fabuwood.com"
+ADMIN_EMAIL="admin@example.com"
 ADMIN_PASSWORD="changeme"
 ```
 

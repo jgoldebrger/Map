@@ -75,5 +75,6 @@ Desktop.ini
 # supabase local CLI
 .supabase/
 
-# cursor / local tooling
-.cursor/
+# Local-only Supabase notes (may contain project-specific values — do not commit secrets)
+docs/SUPABASE.local.md
+

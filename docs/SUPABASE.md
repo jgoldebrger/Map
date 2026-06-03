@@ -1,14 +1,15 @@
-# Supabase setup — SIP (project Map)
+# Supabase setup — SIP
 
-| Field | Value |
-|-------|--------|
-| Project name | Map |
-| Project ID | `qwhpipqyemykqipqvfgg` |
-| Region | `us-east-1` (East US / North Virginia) |
-| Pooler host | `aws-1-us-east-1.pooler.supabase.com` (use **aws-1**, not aws-0) |
-| API URL | `https://qwhpipqyemykqipqvfgg.supabase.co` |
+Use placeholders below; copy **your** values from the Supabase dashboard. Do not commit real project IDs, passwords, or connection strings.
 
-SIP uses **Prisma → PostgreSQL only**. You do **not** need `@supabase/supabase-js` or the anon key from the "Connect → Framework" wizard.
+| Field | Where to find it |
+|-------|------------------|
+| Project ID | Project Settings → General |
+| Region | Project Settings → General |
+| Pooler host | Database → Connection string (often `aws-1-<region>.pooler.supabase.com`) |
+| API URL | `https://YOUR_PROJECT_REF.supabase.co` |
+
+SIP uses **Prisma → PostgreSQL only**. You do **not** need `@supabase/supabase-js` unless you add Supabase client features later.
 
 ## 1. Unpause the project (if needed)
 
@@ -25,11 +26,11 @@ Copy these two and paste into `.env`:
 | `DIRECT_URL` | **Session mode** or **Direct connection** | 5432 |
 | `DATABASE_URL` | **Transaction mode** (add `?pgbouncer=true`) | 6543 |
 
-Use **Connect → ORM → Prisma**. The pooler host is project-specific (this project uses `aws-1-us-east-1`, not `aws-0`).
+Use **Connect → ORM → Prisma**. The pooler host is project-specific.
 
-**Password with `#`:** URL-encode as `%23` (e.g. `JoelAmrom#2003` → `JoelAmrom%232003`).
+**Special characters in password:** URL-encode them (e.g. `#` → `%23`).
 
-**Or:** reset the database password to letters/numbers only (no `#`) to avoid encoding issues.
+**Or:** reset the database password to letters/numbers only to avoid encoding issues.
 
 ## 3. Update `.env`
 
@@ -38,7 +39,9 @@ DATABASE_URL="<paste Transaction pooler URI>"
 DIRECT_URL="<paste Session or Direct URI>"
 ```
 
-## 3. Initialize the database
+See `.env.example` for the full template.
+
+## 4. Initialize the database
 
 ```bash
 npx prisma migrate deploy
@@ -47,7 +50,7 @@ npm run import:counties
 npm run dev
 ```
 
-## 4. Vercel (production)
+## 5. Vercel (production)
 
 Use **Connection pooling** (port `6543`) for `DATABASE_URL` in Vercel env vars.  
 Keep **direct** connection (`5432`) for `DIRECT_URL` when running migrations from your machine or CI.

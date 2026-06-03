@@ -1,7 +1,16 @@
 import { expect, type Page } from "@playwright/test";
 
-export const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "jgoldberger@fabuwood.com";
-export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "changeme";
+function requireEnv(name: "ADMIN_EMAIL" | "ADMIN_PASSWORD"): string {
+  const value = process.env[name]?.trim();
+  if (value) return value;
+  if (process.env.CI === "true") {
+    throw new Error(`${name} must be set for E2E tests in CI`);
+  }
+  return name === "ADMIN_EMAIL" ? "admin@example.com" : "changeme";
+}
+
+export const ADMIN_EMAIL = requireEnv("ADMIN_EMAIL");
+export const ADMIN_PASSWORD = requireEnv("ADMIN_PASSWORD");
 
 export async function loginAsAdmin(page: Page) {
   await page.goto("/login");
