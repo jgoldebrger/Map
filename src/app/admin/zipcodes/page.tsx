@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { DataTable, type DataTableColumn, type SortState } from "@/components/ui/data-table";
 
 type ZipRow = {
   zip: string;
@@ -10,10 +10,15 @@ type ZipRow = {
   county: { name: string; state: string };
 };
 
+const COLUMN_FILTER_KEYS = ["zip", "city", "county", "state"] as const;
+
 export default function ZipCodesPage() {
   const [zips, setZips] = useState<ZipRow[]>([]);
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+  const [debouncedColumnFilters, setDebouncedColumnFilters] = useState<Record<string, string>>({});
+  const [sort, setSort] = useState<SortState>({ id: "zip", desc: false });
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [pageIndex, setPageIndex] = useState(0);
@@ -25,8 +30,13 @@ export default function ZipCodesPage() {
   }, [q]);
 
   useEffect(() => {
+    const t = setTimeout(() => setDebouncedColumnFilters(columnFilters), 300);
+    return () => clearTimeout(t);
+  }, [columnFilters]);
+
+  useEffect(() => {
     setPageIndex(0);
-  }, [debouncedQ]);
+  }, [debouncedQ, debouncedColumnFilters, sort]);
 
   useEffect(() => {
     setLoading(true);
@@ -34,6 +44,14 @@ export default function ZipCodesPage() {
     if (debouncedQ) params.set("q", debouncedQ);
     params.set("page", String(pageIndex + 1));
     params.set("limit", String(pageSize));
+    if (sort) {
+      params.set("sortBy", sort.id);
+      params.set("sortDir", sort.desc ? "desc" : "asc");
+    }
+    for (const key of COLUMN_FILTER_KEYS) {
+      const value = debouncedColumnFilters[key]?.trim();
+      if (value) params.set(`filter${key.charAt(0).toUpperCase()}${key.slice(1)}`, value);
+    }
 
     fetch(`/api/zipcodes?${params}`)
       .then((r) => r.json())
@@ -43,7 +61,11 @@ export default function ZipCodesPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [debouncedQ, pageIndex, pageSize]);
+  }, [debouncedQ, debouncedColumnFilters, sort, pageIndex, pageSize]);
+
+  const handleColumnFiltersChange = useCallback((filters: Record<string, string>) => {
+    setColumnFilters(filters);
+  }, []);
 
   const columns = useMemo<DataTableColumn<ZipRow>[]>(
     () => [
@@ -91,8 +113,14 @@ export default function ZipCodesPage() {
         storageKey="zipcodes"
         emptyMessage="No ZIP codes found."
         showGlobalFilter={false}
-        showColumnFilters={false}
+        showColumnFilters
         serverPagination
+        serverSort
+        sort={sort}
+        onSortChange={setSort}
+        serverColumnFilters
+        columnFilters={columnFilters}
+        onColumnFiltersChange={handleColumnFiltersChange}
         totalRows={total}
         pageIndex={pageIndex}
         pageSize={pageSize}

@@ -65,11 +65,19 @@ export type DataTableProps<T> = {
   pageIndex?: number;
   onPageIndexChange?: (pageIndex: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
-  /** Hide per-column filter inputs (recommended for server-paginated tables) */
+  /** Hide per-column filter inputs (recommended for server-paginated tables unless serverColumnFilters) */
   showColumnFilters?: boolean;
+  /** Server-side sort: show sort headers and use sort/onSortChange instead of client sort */
+  serverSort?: boolean;
+  sort?: SortState;
+  onSortChange?: (sort: SortState) => void;
+  /** Server-side column filters: show filter row; parent supplies values and refetches */
+  serverColumnFilters?: boolean;
+  columnFilters?: Record<string, string>;
+  onColumnFiltersChange?: (filters: Record<string, string>) => void;
 };
 
-type SortState = { id: string; desc: boolean } | null;
+export type SortState = { id: string; desc: boolean } | null;
 
 function getSortValue<T>(row: T, col: DataTableColumn<T>): string | number {
   if (!col.accessor) return "";
@@ -115,14 +123,26 @@ export function DataTable<T>({
   onPageIndexChange,
   onPageSizeChange,
   showColumnFilters = true,
+  serverSort = false,
+  sort: sortProp,
+  onSortChange,
+  serverColumnFilters = false,
+  columnFilters: columnFiltersProp,
+  onColumnFiltersChange,
 }: DataTableProps<T>) {
   const [globalFilter, setGlobalFilter] = useState("");
-  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
-  const [sort, setSort] = useState<SortState>(null);
+  const [internalColumnFilters, setInternalColumnFilters] = useState<Record<string, string>>({});
+  const [internalSort, setInternalSort] = useState<SortState>(null);
   const [internalPageIndex, setInternalPageIndex] = useState(0);
   const [internalPageSize, setInternalPageSize] = useState(pageSizeProp);
 
   const isServer = Boolean(serverPagination && totalRows != null);
+  const columnFilters = useMemo(
+    () => (serverColumnFilters ? (columnFiltersProp ?? {}) : internalColumnFilters),
+    [columnFiltersProp, internalColumnFilters, serverColumnFilters],
+  );
+  const sort = serverSort ? (sortProp ?? null) : internalSort;
+  const showFilters = showColumnFilters && (!isServer || serverColumnFilters);
   const pageIndex = isServer ? pageIndexProp : internalPageIndex;
   const pageSize = isServer ? pageSizeProp : internalPageSize;
 
@@ -177,15 +197,33 @@ export function DataTable<T>({
     [columns, columnVisibility],
   );
 
-  const toggleSort = useCallback((columnId: string) => {
-    setSort((prev) => {
-      if (prev?.id !== columnId) return { id: columnId, desc: false };
-      if (!prev.desc) return { id: columnId, desc: true };
-      return null;
-    });
-  }, []);
+  const toggleSort = useCallback(
+    (columnId: string) => {
+      const next: SortState = (() => {
+        if (sort?.id !== columnId) return { id: columnId, desc: false };
+        if (!sort.desc) return { id: columnId, desc: true };
+        return null;
+      })();
+      if (serverSort) onSortChange?.(next);
+      else setInternalSort(next);
+    },
+    [onSortChange, serverSort, sort],
+  );
+
+  const setColumnFilter = useCallback(
+    (columnId: string, value: string) => {
+      if (serverColumnFilters) {
+        onColumnFiltersChange?.({ ...columnFilters, [columnId]: value });
+      } else {
+        setInternalColumnFilters((f) => ({ ...f, [columnId]: value }));
+      }
+    },
+    [columnFilters, onColumnFiltersChange, serverColumnFilters],
+  );
 
   const processedRows = useMemo(() => {
+    if (isServer) return data;
+
     let rows = [...data];
     const gf = globalFilter.trim().toLowerCase();
 
@@ -219,7 +257,7 @@ export function DataTable<T>({
     }
 
     return rows;
-  }, [data, columns, columnVisibility, globalFilter, columnFilters, sort]);
+  }, [data, columns, columnVisibility, globalFilter, columnFilters, sort, isServer]);
 
   const paginationTotal = isServer ? totalRows! : processedRows.length;
   const pageCount = pagination ? Math.max(1, Math.ceil(paginationTotal / pageSize)) : 1;
@@ -296,7 +334,10 @@ export function DataTable<T>({
             <TableRow>
               {visibleColumns.map((col) => {
                 const isSorted = sort?.id === col.id;
-                const canSort = !isServer && col.sortable !== false && col.accessor;
+                const canSort =
+                  col.sortable !== false &&
+                  col.accessor &&
+                  (!isServer || serverSort);
                 return (
                   <TableHead key={col.id} className={col.headerClassName}>
                     {canSort ? (
@@ -323,7 +364,7 @@ export function DataTable<T>({
                 );
               })}
             </TableRow>
-            {showColumnFilters && !isServer && (
+            {showFilters && (
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               {visibleColumns.map((col) => (
                 <TableHead key={`${col.id}-filter`} className="py-1.5 font-normal">
@@ -331,9 +372,7 @@ export function DataTable<T>({
                     <Input
                       placeholder={`Filter…`}
                       value={columnFilters[col.id] ?? ""}
-                      onChange={(e) =>
-                        setColumnFilters((f) => ({ ...f, [col.id]: e.target.value }))
-                      }
+                      onChange={(e) => setColumnFilter(col.id, e.target.value)}
                       className="h-8 text-xs"
                     />
                   ) : null}
