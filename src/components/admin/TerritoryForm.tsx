@@ -75,10 +75,13 @@ export function TerritoryForm({ methods, defaultValues, onSubmit, onCancel }: Pr
       </div>
       <div className="space-y-2">
         <Label>Color</Label>
-        <div className="flex gap-2">
-          <Input type="color" className="w-16 h-9 p-1" {...form.register("color")} />
-          <Input {...form.register("color")} />
-        </div>
+        <ColorField
+          value={form.watch("color")}
+          onChange={(color) =>
+            form.setValue("color", color, { shouldValidate: true, shouldDirty: true })
+          }
+          error={form.formState.errors.color?.message}
+        />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -108,5 +111,44 @@ export function TerritoryForm({ methods, defaultValues, onSubmit, onCancel }: Pr
         <Button type="submit">Save</Button>
       </div>
     </form>
+  );
+}
+
+function normalizeHexColor(raw: string): string {
+  let value = raw.trim();
+  if (!value.startsWith("#")) value = `#${value}`;
+  return value.slice(0, 7);
+}
+
+function ColorField({
+  value,
+  onChange,
+  error,
+}: {
+  value: string;
+  onChange: (color: string) => void;
+  error?: string;
+}) {
+  const pickerValue = /^#[0-9A-Fa-f]{6}$/.test(value) ? value : "#3B82F6";
+
+  return (
+    <div className="space-y-1">
+      <div className="flex gap-2">
+        <Input
+          type="color"
+          className="w-16 h-9 p-1 cursor-pointer"
+          value={pickerValue}
+          onChange={(e) => onChange(e.target.value.toLowerCase())}
+          aria-label="Pick territory color"
+        />
+        <Input
+          value={value}
+          onChange={(e) => onChange(normalizeHexColor(e.target.value))}
+          placeholder="#3B82F6"
+          spellCheck={false}
+        />
+      </div>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+    </div>
   );
 }

@@ -56,3 +56,24 @@ export function patchAssignmentMap(
   }
   return next;
 }
+
+export function updateTerritoryInAssignmentMap(
+  current: AssignmentMap,
+  territoryId: string,
+  updates: Partial<
+    Pick<
+      AssignmentMap[string],
+      "color" | "territoryName" | "shipDay" | "cutoffDay" | "notes" | "shippingMethod"
+    >
+  >,
+): AssignmentMap {
+  let changed = false;
+  const next: AssignmentMap = { ...current };
+  for (const [fips, entry] of Object.entries(next)) {
+    if (entry.territoryId === territoryId) {
+      next[fips] = { ...entry, ...updates };
+      changed = true;
+    }
+  }
+  return changed ? next : current;
+}

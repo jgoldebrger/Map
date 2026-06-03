@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   fetchAssignments,
   patchAssignmentMap,
+  updateTerritoryInAssignmentMap,
   type AssignmentMap,
   type assignmentFromTerritory,
 } from "@/lib/queries/assignments";
@@ -29,5 +30,19 @@ export function usePatchAssignments() {
     qc.setQueryData<AssignmentMap>(["assignments"], (current) =>
       patchAssignmentMap(current ?? {}, fipsCodes, territory),
     );
+  };
+}
+
+export function useSyncTerritoryAssignments() {
+  const qc = useQueryClient();
+  const refetch = useInvalidateAssignments();
+  return (
+    territoryId: string,
+    updates: Parameters<typeof updateTerritoryInAssignmentMap>[2],
+  ) => {
+    qc.setQueryData<AssignmentMap>(["assignments"], (current) =>
+      updateTerritoryInAssignmentMap(current ?? {}, territoryId, updates),
+    );
+    void refetch();
   };
 }

@@ -14,6 +14,7 @@ import {
 import { TerritoryForm } from "@/components/admin/TerritoryForm";
 import type { TerritoryInput } from "@/lib/validators/territory";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useSyncTerritoryAssignments } from "@/hooks/useTerritoryAssignments";
 
 type Territory = {
   id: string;
@@ -30,6 +31,7 @@ type Method = { id: string; name: string };
 
 export default function TerritoriesPage() {
   const { canWrite } = usePermissions();
+  const syncTerritoryAssignments = useSyncTerritoryAssignments();
   const [territories, setTerritories] = useState<Territory[]>([]);
   const [methods, setMethods] = useState<Method[]>([]);
   const [open, setOpen] = useState(false);
@@ -45,19 +47,38 @@ export default function TerritoriesPage() {
   }, [load]);
 
   const handleSave = async (data: TerritoryInput) => {
+    const res = editing
+      ? await fetch("/api/territories", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: editing.id, ...data }),
+        })
+      : await fetch("/api/territories", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      alert(typeof err.error === "string" ? err.error : "Save failed");
+      return;
+    }
+
     if (editing) {
-      await fetch("/api/territories", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editing.id, ...data }),
-      });
-    } else {
-      await fetch("/api/territories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+      const methodName =
+        methods.find((m) => m.id === data.shippingMethodId)?.name ??
+        editing.shippingMethod.name;
+      syncTerritoryAssignments(editing.id, {
+        color: data.color,
+        territoryName: data.name,
+        shipDay: data.shipDay ?? null,
+        cutoffDay: data.cutoffDay ?? null,
+        notes: data.notes ?? null,
+        shippingMethod: methodName,
       });
     }
+
     setOpen(false);
     setEditing(null);
     load();
@@ -187,6 +208,7 @@ export default function TerritoriesPage() {
             <DialogTitle>{editing ? "Edit Territory" : "New Territory"}</DialogTitle>
           </DialogHeader>
           <TerritoryForm
+            key={editing?.id ?? "new"}
             methods={methods}
             defaultValues={
               editing
