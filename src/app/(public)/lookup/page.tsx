@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { lookupSchema, type LookupInput } from "@/lib/validators/lookup";
@@ -18,7 +19,8 @@ import {
 } from "@/components/ui/select";
 import type { LookupResult } from "@/lib/services/lookup";
 
-export default function LookupPage() {
+function LookupPageContent() {
+  const searchParams = useSearchParams();
   const [result, setResult] = useState<LookupResult | LookupResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -28,13 +30,13 @@ export default function LookupPage() {
     defaultValues: { type: "zip", query: "" },
   });
 
-  const onSubmit = async (data: LookupInput) => {
+  const runLookup = useCallback(async (data: LookupInput) => {
     setLoading(true);
     setError(null);
     setResult(null);
     try {
       const res = await fetch(
-        `/api/lookup?type=${data.type}&q=${encodeURIComponent(data.query)}`
+        `/api/lookup?type=${data.type}&q=${encodeURIComponent(data.query)}`,
       );
       if (!res.ok) {
         const err = await res.json();
@@ -47,6 +49,22 @@ export default function LookupPage() {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    const q = searchParams.get("q") ?? searchParams.get("query") ?? "";
+    if (!q.trim()) return;
+
+    const type = searchParams.get("type") ?? "zip";
+    const parsed = lookupSchema.safeParse({ type, query: q });
+    if (!parsed.success) return;
+
+    form.reset(parsed.data);
+    void runLookup(parsed.data);
+  }, [searchParams, form, runLookup]);
+
+  const onSubmit = async (data: LookupInput) => {
+    await runLookup(data);
   };
 
   return (
@@ -86,7 +104,9 @@ export default function LookupPage() {
                   placeholder={
                     form.watch("type") === "zip"
                       ? "e.g. 07652"
-                      : "Enter search term..."
+                      : form.watch("type") === "county" || form.watch("type") === "city"
+                        ? "e.g. Bergen, NJ"
+                        : "Enter search term..."
                   }
                   {...form.register("query")}
                 />
@@ -101,10 +121,9 @@ export default function LookupPage() {
 
             {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
 
-            {result && !Array.isArray(result) && (
-              <ResultCard result={result} />
-            )}
-            {Array.isArray(result) && result.map((r, i) => <ResultCard key={i} result={r} />)}
+            {result && !Array.isArray(result) && <ResultCard result={result} />}
+            {Array.isArray(result) &&
+              result.map((r, i) => <ResultCard key={`${r.territory}-${i}`} result={r} />)}
           </CardContent>
         </Card>
       </main>
@@ -112,10 +131,34 @@ export default function LookupPage() {
   );
 }
 
+export default function LookupPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex flex-col bg-slate-50">
+          <SiteHeader />
+          <main className="flex-1 container mx-auto px-4 py-8 max-w-lg">
+            <Card>
+              <CardContent className="py-8 text-sm text-muted-foreground">Loading lookup…</CardContent>
+            </Card>
+          </main>
+        </div>
+      }
+    >
+      <LookupPageContent />
+    </Suspense>
+  );
+}
+
 function ResultCard({ result }: { result: LookupResult }) {
   return (
     <div className="mt-6 rounded-lg border bg-muted/30 p-4 space-y-2">
-      <Row label="Territory" value={result.territory} highlight />
+      {result.unassigned && (
+        <p className="text-sm text-amber-700">
+          This location is in the database but has no territory assignment yet.
+        </p>
+      )}
+      <Row label="Territory" value={result.territory} highlight={!result.unassigned} />
       <Row label="Shipping Method" value={result.shippingMethod} />
       <Row label="Ship Day" value={result.shipDay ?? "—"} />
       <Row label="Cutoff Day" value={result.cutoffDay ?? "—"} />

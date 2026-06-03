@@ -6,15 +6,62 @@ export type LookupResult = {
   shipDay: string | null;
   cutoffDay: string | null;
   notes: string | null;
+  unassigned?: boolean;
   county?: string;
   state?: string;
   city?: string;
   zip?: string;
 };
 
+const UNASSIGNED_TERRITORY = "Not assigned";
+const UNASSIGNED_METHOD = "—";
+
+function fromTerritory(
+  t: {
+    name: string;
+    shipDay: string | null;
+    cutoffDay: string | null;
+    notes: string | null;
+    shippingMethod: { name: string };
+  },
+  location: Pick<LookupResult, "county" | "state" | "city" | "zip"> = {},
+): LookupResult {
+  return {
+    territory: t.name,
+    shippingMethod: t.shippingMethod.name,
+    shipDay: t.shipDay,
+    cutoffDay: t.cutoffDay,
+    notes: t.notes,
+    ...location,
+  };
+}
+
+function unassignedLocation(
+  location: Pick<LookupResult, "county" | "state" | "city" | "zip">,
+): LookupResult {
+  return {
+    territory: UNASSIGNED_TERRITORY,
+    shippingMethod: UNASSIGNED_METHOD,
+    shipDay: null,
+    cutoffDay: null,
+    notes: null,
+    unassigned: true,
+    ...location,
+  };
+}
+
+function parseCountyQuery(query: string): { name: string; state?: string } {
+  const parts = query.split(",").map((s) => s.trim());
+  const name = parts[0].replace(/\s+county$/i, "");
+  return { name, state: parts[1] };
+}
+
 export async function lookupByZip(zip: string): Promise<LookupResult | null> {
+  const normalized = zip.replace(/\D/g, "").slice(0, 5).padStart(5, "0");
+  if (normalized.length !== 5) return null;
+
   const zipRecord = await prisma.zipCode.findUnique({
-    where: { zip: zip.padStart(5, "0").slice(-5) },
+    where: { zip: normalized },
     include: {
       county: {
         include: {
@@ -25,22 +72,24 @@ export async function lookupByZip(zip: string): Promise<LookupResult | null> {
       },
     },
   });
-  if (!zipRecord?.county.assignment) return null;
-  const t = zipRecord.county.assignment.territory;
-  return {
-    territory: t.name,
-    shippingMethod: t.shippingMethod.name,
-    shipDay: t.shipDay,
-    cutoffDay: t.cutoffDay,
-    notes: t.notes,
+  if (!zipRecord) return null;
+
+  const location = {
     county: zipRecord.county.name,
     state: zipRecord.county.state,
     city: zipRecord.city,
     zip: zipRecord.zip,
   };
+
+  if (!zipRecord.county.assignment) {
+    return unassignedLocation(location);
+  }
+
+  return fromTerritory(zipRecord.county.assignment.territory, location);
 }
 
-export async function lookupByCounty(name: string, state?: string): Promise<LookupResult | null> {
+export async function lookupByCounty(query: string): Promise<LookupResult | null> {
+  const { name, state } = parseCountyQuery(query);
   const county = await prisma.county.findFirst({
     where: {
       name: { contains: name, mode: "insensitive" },
@@ -52,17 +101,14 @@ export async function lookupByCounty(name: string, state?: string): Promise<Look
       },
     },
   });
-  if (!county?.assignment) return null;
-  const t = county.assignment.territory;
-  return {
-    territory: t.name,
-    shippingMethod: t.shippingMethod.name,
-    shipDay: t.shipDay,
-    cutoffDay: t.cutoffDay,
-    notes: t.notes,
-    county: county.name,
-    state: county.state,
-  };
+  if (!county) return null;
+
+  const location = { county: county.name, state: county.state };
+  if (!county.assignment) {
+    return unassignedLocation(location);
+  }
+
+  return fromTerritory(county.assignment.territory, location);
 }
 
 export async function lookupByCity(city: string, state?: string): Promise<LookupResult | null> {
@@ -72,6 +118,7 @@ export async function lookupByCity(city: string, state?: string): Promise<Lookup
       ...(state ? { county: { state: state.toUpperCase().slice(0, 2) } } : {}),
     },
     include: { county: true },
+    orderBy: { zip: "asc" },
   });
   if (!zip) return null;
   return lookupByZip(zip.zip);
@@ -83,44 +130,43 @@ export async function lookupByTerritory(name: string): Promise<LookupResult | nu
     include: { shippingMethod: true },
   });
   if (!territory) return null;
-  return {
-    territory: territory.name,
-    shippingMethod: territory.shippingMethod.name,
-    shipDay: territory.shipDay,
-    cutoffDay: territory.cutoffDay,
-    notes: territory.notes,
-  };
+  return fromTerritory(territory);
 }
 
 export async function lookupByState(state: string): Promise<LookupResult[]> {
-  const counties = await prisma.county.findMany({
-    where: { state: state.toUpperCase().slice(0, 2) },
+  const st = state.trim().toUpperCase().slice(0, 2);
+  if (st.length !== 2) return [];
+
+  const assignments = await prisma.countyAssignment.findMany({
+    where: { county: { state: st } },
     include: {
-      assignment: {
-        include: { territory: { include: { shippingMethod: true } } },
-      },
+      territory: { include: { shippingMethod: true } },
     },
-    take: 1,
   });
-  const county = counties[0];
-  if (!county?.assignment) return [];
-  const t = county.assignment.territory;
-  return [
-    {
-      territory: t.name,
-      shippingMethod: t.shippingMethod.name,
-      shipDay: t.shipDay,
-      cutoffDay: t.cutoffDay,
-      notes: t.notes,
-      state: county.state,
-    },
-  ];
+
+  const seen = new Set<string>();
+  const results: LookupResult[] = [];
+  for (const assignment of assignments) {
+    if (seen.has(assignment.territoryId)) continue;
+    seen.add(assignment.territoryId);
+    results.push(fromTerritory(assignment.territory, { state: st }));
+  }
+
+  results.sort((a, b) => a.territory.localeCompare(b.territory));
+  if (results.length > 0) return results;
+
+  const county = await prisma.county.findFirst({ where: { state: st } });
+  if (!county) return [];
+  return [unassignedLocation({ state: st, county: county.name })];
 }
 
-export async function performLookup(type: string, query: string): Promise<LookupResult | LookupResult[] | null> {
+export async function performLookup(
+  type: string,
+  query: string,
+): Promise<LookupResult | LookupResult[] | null> {
   switch (type) {
     case "zip":
-      return lookupByZip(query.replace(/\D/g, "").slice(0, 5));
+      return lookupByZip(query);
     case "county":
       return lookupByCounty(query);
     case "city": {
@@ -134,4 +180,10 @@ export async function performLookup(type: string, query: string): Promise<Lookup
     default:
       return null;
   }
+}
+
+export function isEmptyLookupResult(
+  result: LookupResult | LookupResult[] | null,
+): boolean {
+  return result == null || (Array.isArray(result) && result.length === 0);
 }

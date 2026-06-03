@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { performLookup } from "@/lib/services/lookup";
+import { performLookup, isEmptyLookupResult } from "@/lib/services/lookup";
 import { lookupSchema } from "@/lib/validators/lookup";
 
 export async function GET(request: NextRequest) {
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   }
 
   const result = await performLookup(parsed.data.type, parsed.data.query);
-  if (!result) {
+  if (isEmptyLookupResult(result)) {
     return NextResponse.json({ error: "No results found" }, { status: 404 });
   }
 
