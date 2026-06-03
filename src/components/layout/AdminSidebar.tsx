@@ -11,6 +11,7 @@ import {
   Layers,
   Truck,
   LogOut,
+  Code2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOut } from "next-auth/react";
@@ -41,6 +42,7 @@ const allLinks: {
     permission: "import:run",
   },
   { href: "/admin/audit", label: "Audit Log", icon: History },
+  { href: "/admin/embed", label: "Partner Embed", icon: Code2 },
 ];
 
 export function AdminSidebar() {

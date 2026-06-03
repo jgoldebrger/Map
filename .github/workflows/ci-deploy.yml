@@ -151,6 +151,9 @@ jobs:
       DIRECT_URL: ${{ secrets.DIRECT_URL || vars.DIRECT_URL }}
       AUTH_SECRET: ${{ secrets.AUTH_SECRET || vars.AUTH_SECRET }}
       AUTH_TRUST_HOST: "true"
+      EMBED_ALLOWED_ORIGINS: ${{ secrets.EMBED_ALLOWED_ORIGINS || vars.EMBED_ALLOWED_ORIGINS }}
+      AUTH_URL: ${{ secrets.AUTH_URL || vars.AUTH_URL }}
+      NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL || vars.NEXTAUTH_URL }}
     steps:
       - name: Checkout main
         uses: actions/checkout@v6.0.3

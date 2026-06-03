@@ -20,6 +20,7 @@ test.describe("Admin portal", () => {
       { path: "/admin/zipcodes", heading: /ZIP Codes/i },
       { path: "/admin/import", heading: /CSV Import/i },
       { path: "/admin/audit", heading: /Audit History/i },
+      { path: "/admin/embed", heading: /Partner embed/i },
     ];
 
     for (const { path, heading } of pages) {

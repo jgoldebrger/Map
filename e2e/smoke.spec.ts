@@ -20,6 +20,28 @@ test.describe("Public pages", () => {
     await expect(page.getByText("Shipping Intelligence Platform")).toBeVisible();
     await expect(page.getByPlaceholder(/Search ZIP/i)).toBeVisible();
   });
+
+  test("embed map loads without full site chrome", async ({ page }) => {
+    await page.goto("/embed/map");
+    await expect(page.getByText("Fabuwood shipping territories")).toBeVisible();
+    await expect(page.getByRole("link", { name: /Open full map/i })).toBeVisible();
+    await expect(page.getByPlaceholder(/Search ZIP/i)).toBeVisible();
+    await expect(page.getByText("Shipping Intelligence Platform")).not.toBeVisible();
+  });
+
+  test("embed route allows framing via CSP frame-ancestors", async ({ request }) => {
+    const res = await request.get("/embed/map");
+    expect(res.ok()).toBeTruthy();
+    const csp = res.headers()["content-security-policy"] ?? "";
+    expect(csp).toContain("frame-ancestors");
+    expect(csp).toContain("'self'");
+  });
+
+  test("public map denies iframe embedding", async ({ request }) => {
+    const res = await request.get("/map");
+    expect(res.ok()).toBeTruthy();
+    expect(res.headers()["x-frame-options"]).toBe("DENY");
+  });
 });
 
 test.describe("Public API", () => {

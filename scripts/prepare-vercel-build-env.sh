@@ -33,5 +33,8 @@ set_var "DATABASE_URL" "${DATABASE_URL:-}"
 set_var "DIRECT_URL" "${DIRECT_URL:-}"
 set_var "AUTH_SECRET" "${AUTH_SECRET:-}"
 set_var "AUTH_TRUST_HOST" "${AUTH_TRUST_HOST:-true}"
+set_var "EMBED_ALLOWED_ORIGINS" "${EMBED_ALLOWED_ORIGINS:-}"
+set_var "AUTH_URL" "${AUTH_URL:-}"
+set_var "NEXTAUTH_URL" "${NEXTAUTH_URL:-}"
 
 echo "Vercel production env file ready (Mapbox token: yes)."
