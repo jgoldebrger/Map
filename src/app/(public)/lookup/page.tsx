@@ -165,6 +165,11 @@ function ResultCard({ result }: { result: LookupResult }) {
       {result.county && <Row label="County" value={`${result.county}, ${result.state}`} />}
       {result.city && <Row label="City" value={result.city} />}
       {result.zip && <Row label="ZIP" value={result.zip} />}
+      {result.zipOverride && (
+        <p className="text-xs text-muted-foreground col-span-2 -mt-1">
+          ZIP-specific territory override (differs from county default)
+        </p>
+      )}
       {result.notes && <Row label="Notes" value={result.notes} />}
     </div>
   );

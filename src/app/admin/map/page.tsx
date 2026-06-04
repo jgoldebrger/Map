@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import type mapboxgl from "mapbox-gl";
 import { PolygonDrawTool } from "@/components/map/editor/PolygonDrawTool";
+import { ZipAssignPanel } from "@/components/map/editor/ZipAssignPanel";
 import { StateMultiSelect } from "@/components/map/editor/StateMultiSelect";
 import { boundsForFeatures, countyFipsInStates, featuresInStates } from "@/lib/county-geo";
 import type { AssignmentMap } from "@/lib/queries/assignments";
@@ -53,6 +54,8 @@ export default function MapEditorPage() {
   const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null);
   const [countyFeatures, setCountyFeatures] = useState<GeoJSON.Feature[]>([]);
   const [statePicker, setStatePicker] = useState<Set<string>>(new Set());
+  const [zipPanelOpen, setZipPanelOpen] = useState(false);
+  const [zipMessage, setZipMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/geo/us-counties.geojson")
@@ -175,8 +178,8 @@ export default function MapEditorPage() {
         <div>
           <h1 className="text-xl font-bold">Map Editor</h1>
           <p className="text-sm text-muted-foreground">
-            Click counties, Shift+drag a box, draw a polygon, or select one or more states.
-            Assigning sets territory and shipping method (via territory).
+            Click counties, Shift+drag a box, draw a polygon, or select states. Use ZIP assignments
+            to override county territory for specific ZIP codes (e.g. Florida Keys).
           </p>
         </div>
         <div className="flex-1" />
@@ -231,14 +234,27 @@ export default function MapEditorPage() {
               Clear
             </Button>
             <Button
+              variant={zipPanelOpen ? "default" : "outline"}
+              onClick={() => {
+                setZipPanelOpen((o) => !o);
+                setZipMessage(null);
+              }}
+            >
+              ZIP overrides
+            </Button>
+            <Button
               variant={polygonMode ? "default" : "outline"}
               onClick={() => setPolygonMode((p) => !p)}
             >
               {polygonMode ? "Exit Draw" : "Draw Polygon"}
             </Button>
           </div>
-          {assignError && (
-            <p className="text-sm text-destructive max-w-xl text-right">{assignError}</p>
+          {(assignError || zipMessage) && (
+            <p
+              className={`text-sm max-w-xl text-right ${assignError ? "text-destructive" : "text-muted-foreground"}`}
+            >
+              {assignError ?? zipMessage}
+            </p>
           )}
         </div>
         {polygonMode && (
@@ -282,6 +298,14 @@ export default function MapEditorPage() {
           />
         </div>
         <MapLegend assignments={assignments} className="absolute bottom-4 right-4 z-10 w-52" />
+        {zipPanelOpen && (
+          <ZipAssignPanel
+            assignTerritoryId={assignTerritoryId}
+            selectedCountyFips={selectedFips}
+            onClose={() => setZipPanelOpen(false)}
+            onMessage={setZipMessage}
+          />
+        )}
       </div>
     </div>
   );

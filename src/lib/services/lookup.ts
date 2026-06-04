@@ -11,6 +11,8 @@ export type LookupResult = {
   state?: string;
   city?: string;
   zip?: string;
+  /** True when territory comes from a ZIP-level override, not the county default. */
+  zipOverride?: boolean;
 };
 
 const UNASSIGNED_TERRITORY = "Not assigned";
@@ -63,6 +65,9 @@ export async function lookupByZip(zip: string): Promise<LookupResult | null> {
   const zipRecord = await prisma.zipCode.findUnique({
     where: { zip: normalized },
     include: {
+      assignment: {
+        include: { territory: { include: { shippingMethod: true } } },
+      },
       county: {
         include: {
           assignment: {
@@ -80,6 +85,10 @@ export async function lookupByZip(zip: string): Promise<LookupResult | null> {
     city: zipRecord.city,
     zip: zipRecord.zip,
   };
+
+  if (zipRecord.assignment) {
+    return { ...fromTerritory(zipRecord.assignment.territory, location), zipOverride: true };
+  }
 
   if (!zipRecord.county.assignment) {
     return unassignedLocation(location);

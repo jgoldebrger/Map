@@ -52,6 +52,20 @@ function buildWhere(params: URLSearchParams): Prisma.ZipCodeWhereInput | undefin
     and.push({ county: { state: { equals: state.toUpperCase().slice(0, 2) } } });
   }
 
+  const fips = params
+    .get("filterFips")
+    ?.split(",")
+    .map((f) => f.trim().padStart(5, "0").slice(-5))
+    .filter((f) => f.length === 5);
+  if (fips && fips.length > 0) {
+    and.push({ county: { fipsCode: { in: fips } } });
+  }
+
+  const overridesOnly = params.get("overridesOnly") === "1";
+  if (overridesOnly) {
+    and.push({ assignment: { isNot: null } });
+  }
+
   if (and.length === 0) return undefined;
   if (and.length === 1) return and[0];
   return { AND: and };
@@ -78,6 +92,7 @@ export async function GET(request: NextRequest) {
   if ("error" in authResult) return authResult.error;
 
   const params = request.nextUrl.searchParams;
+  const includeOverrides = params.get("includeOverrides") === "1";
   const page = parsePositiveInt(params.get("page"), 1, 10_000);
   const limit = parsePositiveInt(params.get("limit"), 25, 500);
   const sortBy = parseSortColumn(params.get("sortBy"));
@@ -87,7 +102,29 @@ export async function GET(request: NextRequest) {
   const [zips, total] = await Promise.all([
     prisma.zipCode.findMany({
       where,
-      include: { county: { select: { name: true, state: true } } },
+      include: {
+        county: {
+          select: {
+            name: true,
+            state: true,
+            fipsCode: true,
+            assignment: includeOverrides
+              ? { include: { territory: { select: { id: true, name: true, color: true } } } }
+              : false,
+          },
+        },
+        ...(includeOverrides
+          ? {
+              assignment: {
+                include: {
+                  territory: {
+                    select: { id: true, name: true, color: true, shippingMethod: { select: { name: true } } },
+                  },
+                },
+              },
+            }
+          : {}),
+      },
       skip: (page - 1) * limit,
       take: limit,
       orderBy: buildOrderBy(sortBy, sortDir),
@@ -95,5 +132,41 @@ export async function GET(request: NextRequest) {
     prisma.zipCode.count({ where }),
   ]);
 
-  return NextResponse.json({ zips, total, page, limit, sortBy, sortDir });
+  const rows = includeOverrides
+    ? zips.map((z) => {
+        const record = z as typeof z & {
+          assignment?: {
+            territory: { id: string; name: string; color: string; shippingMethod: { name: string } };
+          } | null;
+          county: {
+            name: string;
+            state: string;
+            fipsCode: string;
+            assignment?: { territory: { id: string; name: string; color: string } } | null;
+          };
+        };
+        return {
+          zip: record.zip,
+          city: record.city,
+          county: { name: record.county.name, state: record.county.state },
+          override: record.assignment
+            ? {
+                territoryId: record.assignment.territory.id,
+                territoryName: record.assignment.territory.name,
+                color: record.assignment.territory.color,
+                shippingMethod: record.assignment.territory.shippingMethod.name,
+              }
+            : null,
+          countyTerritory: record.county.assignment
+            ? {
+                territoryId: record.county.assignment.territory.id,
+                territoryName: record.county.assignment.territory.name,
+                color: record.county.assignment.territory.color,
+              }
+            : null,
+        };
+      })
+    : zips;
+
+  return NextResponse.json({ zips: rows, total, page, limit, sortBy, sortDir });
 }
