@@ -1,9 +1,14 @@
+import buffer from "@turf/buffer";
 import difference from "@turf/difference";
 import { feature as turfFeature, featureCollection } from "@turf/helpers";
+import union from "@turf/union";
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from "geojson";
 import { fipsFromGeoFeature } from "@/lib/county-geo";
 
 type PolygonFeature = Feature<Polygon | MultiPolygon>;
+
+/** Widen hole geometry so county fill does not bleed between adjacent ZCTA islands. */
+const HOLE_BUFFER_KM = 0.1;
 
 function isPolygonGeometry(
   geometry: GeoJSON.Geometry | null | undefined,
@@ -20,6 +25,40 @@ function normalizeFips(fips: string): string {
   return fips.padStart(5, "0").slice(-5);
 }
 
+/** Union override ZIP shapes (+ buffer) for hole punching; display layers keep exact ZCTA. */
+function buildHoleGeometry(zipPolygons: PolygonFeature[]): PolygonFeature | null {
+  if (zipPolygons.length === 0) return null;
+
+  const hole: PolygonFeature | null =
+    zipPolygons.length === 1
+      ? zipPolygons[0]
+      : union(featureCollection(zipPolygons));
+  if (!hole) return zipPolygons[0] ?? null;
+
+  try {
+    const buffered = buffer(hole, HOLE_BUFFER_KM, { units: "kilometers" });
+    return (buffered as PolygonFeature | undefined) ?? hole;
+  } catch {
+    return hole;
+  }
+}
+
+function subtractFromCounty(
+  countyFeature: PolygonFeature,
+  hole: PolygonFeature,
+  county: GeoJSON.Feature,
+): GeoJSON.Feature {
+  const result = difference(
+    featureCollection([countyFeature, hole]) as FeatureCollection<Polygon | MultiPolygon>,
+  );
+  if (!result) return county;
+  return {
+    type: "Feature",
+    properties: county.properties ?? {},
+    geometry: result.geometry,
+  };
+}
+
 function punchCountyHoles(
   county: GeoJSON.Feature,
   zipFeatures: GeoJSON.Feature[],
@@ -34,22 +73,27 @@ function punchCountyHoles(
     .filter((z): z is PolygonFeature => z !== null);
   if (zipPolygons.length === 0) return county;
 
+  const hole = buildHoleGeometry(zipPolygons);
+  if (!hole) return county;
+
   try {
-    const result = difference(
-      featureCollection([countyFeature, ...zipPolygons]) as FeatureCollection<
-        Polygon | MultiPolygon
-      >,
-    );
-    if (!result) {
+    return subtractFromCounty(countyFeature, hole, county);
+  } catch {
+    try {
+      const result = difference(
+        featureCollection([countyFeature, ...zipPolygons]) as FeatureCollection<
+          Polygon | MultiPolygon
+        >,
+      );
+      if (!result) return county;
+      return {
+        type: "Feature",
+        properties: county.properties ?? {},
+        geometry: result.geometry,
+      };
+    } catch {
       return county;
     }
-    return {
-      type: "Feature",
-      properties: county.properties ?? {},
-      geometry: result.geometry,
-    };
-  } catch {
-    return county;
   }
 }
 
