@@ -70,6 +70,17 @@ async function downloadCensusZipCounty(): Promise<string> {
   return res.text();
 }
 
+function rowWeight(cols: string[], header: string[]): number {
+  for (const key of ["zpopp", "zpop", "poppt", "zpoppct"]) {
+    const idx = header.indexOf(key);
+    if (idx >= 0 && cols[idx]) {
+      const n = Number(cols[idx]);
+      if (Number.isFinite(n)) return n;
+    }
+  }
+  return 1;
+}
+
 async function main() {
   const prisma = new PrismaClient();
 
@@ -97,13 +108,13 @@ async function main() {
   });
   const fipsMap = new Map(counties.map((c) => [c.fipsCode, c]));
 
-  const pending = new Map<string, { zip: string; city: string; countyId: string }>();
+  const pending = new Map<string, { zip: string; city: string; countyId: string; weight: number }>();
   let skipped = 0;
 
   for (let i = 1; i < lines.length; i++) {
     const cols = parseCsvLine(lines[i]);
     const zip = (cols[zipIdx] ?? "").replace(/\D/g, "").padStart(5, "0").slice(0, 5);
-    if (!zip || zip.length !== 5 || pending.has(zip)) continue;
+    if (!zip || zip.length !== 5) continue;
 
     const fips = countyFipsFromRow(cols, header);
     const county = fips ? fipsMap.get(fips) : undefined;
@@ -112,6 +123,10 @@ async function main() {
       continue;
     }
 
+    const weight = rowWeight(cols, header);
+    const existing = pending.get(zip);
+    if (existing && weight <= existing.weight) continue;
+
     const csvCity = cityIdx >= 0 ? cols[cityIdx] : undefined;
     const city = resolveZipCity(zip, csvCity, county.name);
     if (!city) {
@@ -119,10 +134,10 @@ async function main() {
       continue;
     }
 
-    pending.set(zip, { zip, city, countyId: county.id });
+    pending.set(zip, { zip, city, countyId: county.id, weight });
   }
 
-  const rows = [...pending.values()];
+  const rows = [...pending.values()].map(({ zip, city, countyId }) => ({ zip, city, countyId }));
   console.log(`Importing ${rows.length} ZIP codes (${skipped} rows skipped)...`);
 
   const BATCH = 50;

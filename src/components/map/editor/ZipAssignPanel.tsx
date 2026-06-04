@@ -6,7 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import {
+  countyLabelFromFips,
+  fipsForTerritoryIds,
+  territoryIdsForFips,
+} from "@/lib/county-geo";
+import type { AssignmentMap } from "@/lib/queries/assignments";
 import { useInvalidateZipOverrideGeoJson } from "@/hooks/useZipOverrideGeoJson";
+
+export type ZipFilterScope = "selected" | "territory";
 
 export type ZipRowWithAssignment = {
   zip: string;
@@ -28,6 +36,8 @@ export type ZipRowWithAssignment = {
 type Props = {
   assignTerritoryId: string;
   selectedCountyFips: Set<string>;
+  assignments: AssignmentMap;
+  countyFeatures: GeoJSON.Feature[];
   onClose: () => void;
   onMessage?: (message: string | null) => void;
 };
@@ -35,12 +45,15 @@ type Props = {
 export function ZipAssignPanel({
   assignTerritoryId,
   selectedCountyFips,
+  assignments,
+  countyFeatures,
   onClose,
   onMessage,
 }: Props) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [limitToCounties, setLimitToCounties] = useState(selectedCountyFips.size > 0);
+  const [filterScope, setFilterScope] = useState<ZipFilterScope>("territory");
   const [overridesOnly, setOverridesOnly] = useState(false);
   const [rows, setRows] = useState<ZipRowWithAssignment[]>([]);
   const [total, setTotal] = useState(0);
@@ -58,15 +71,46 @@ export function ZipAssignPanel({
     if (selectedCountyFips.size > 0) setLimitToCounties(true);
   }, [selectedCountyFips]);
 
+  const selectedCountyLabels = useMemo(
+    () =>
+      [...selectedCountyFips]
+        .map((fips) => countyLabelFromFips(fips, countyFeatures) ?? fips)
+        .sort(),
+    [selectedCountyFips, countyFeatures],
+  );
+
+  const territoryFilterIds = useMemo(
+    () => territoryIdsForFips(assignments, selectedCountyFips),
+    [assignments, selectedCountyFips],
+  );
+
+  const territoryFilterLabel = useMemo(() => {
+    if (territoryFilterIds.length === 0) return null;
+    const names = new Set<string>();
+    for (const fips of selectedCountyFips) {
+      const name = assignments[fips]?.territoryName;
+      if (name) names.add(name);
+    }
+    const countyCount = fipsForTerritoryIds(assignments, territoryFilterIds).length;
+    return {
+      names: [...names],
+      countyCount,
+    };
+  }, [assignments, selectedCountyFips, territoryFilterIds]);
+
   const load = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
     params.set("includeOverrides", "1");
-    params.set("limit", "100");
+    params.set("limit", "500");
     params.set("page", "1");
     if (debouncedSearch.trim()) params.set("q", debouncedSearch.trim());
     if (limitToCounties && selectedCountyFips.size > 0) {
-      params.set("filterFips", [...selectedCountyFips].join(","));
+      if (filterScope === "territory" && territoryFilterIds.length > 0) {
+        params.set("filterTerritoryIds", territoryFilterIds.join(","));
+      } else {
+        params.set("filterFips", [...selectedCountyFips].join(","));
+      }
     }
     if (overridesOnly) params.set("overridesOnly", "1");
 
@@ -78,7 +122,7 @@ export function ZipAssignPanel({
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, limitToCounties, overridesOnly, selectedCountyFips]);
+  }, [debouncedSearch, filterScope, limitToCounties, overridesOnly, selectedCountyFips, territoryFilterIds]);
 
   useEffect(() => {
     load();
@@ -180,12 +224,55 @@ export function ZipAssignPanel({
               onChange={(e) => setLimitToCounties(e.target.checked)}
             />
             <span>
-              Limit to selected counties
+              Limit to map selection
               {selectedCountyFips.size > 0 && (
-                <span className="text-muted-foreground"> ({selectedCountyFips.size})</span>
+                <span className="text-muted-foreground"> ({selectedCountyFips.size} counties)</span>
               )}
             </span>
           </label>
+          {limitToCounties && selectedCountyFips.size > 0 && (
+            <div className="ml-6 space-y-1.5 border-l pl-3 text-xs">
+              <label className="flex cursor-pointer items-start gap-2">
+                <input
+                  type="radio"
+                  name="zip-filter-scope"
+                  className="mt-0.5"
+                  checked={filterScope === "selected"}
+                  onChange={() => setFilterScope("selected")}
+                />
+                <span>
+                  <span className="font-medium text-foreground">Selected counties only</span>
+                  <span className="block text-muted-foreground">
+                    {selectedCountyLabels.join(" · ")}
+                  </span>
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-2">
+                <input
+                  type="radio"
+                  name="zip-filter-scope"
+                  className="mt-0.5"
+                  checked={filterScope === "territory"}
+                  onChange={() => setFilterScope("territory")}
+                  disabled={territoryFilterIds.length === 0}
+                />
+                <span>
+                  <span className="font-medium text-foreground">Same territory as selection</span>
+                  <span className="block text-muted-foreground">
+                    {territoryFilterLabel
+                      ? `${territoryFilterLabel.names.join(", ")} · ${territoryFilterLabel.countyCount} counties`
+                      : "Selected counties have no territory assigned yet"}
+                  </span>
+                </span>
+              </label>
+              {filterScope === "selected" && selectedCountyFips.size === 1 && (
+                <p className="text-muted-foreground">
+                  Map colors follow territory assignments. Other counties with the same color are
+                  separate counties — switch to &quot;Same territory&quot; to include their ZIPs.
+                </p>
+              )}
+            </div>
+          )}
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"

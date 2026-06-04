@@ -1,6 +1,6 @@
 import { bbox } from "@turf/bbox";
 import { featureCollection } from "@turf/helpers";
-import { USPS_TO_FIPS } from "@/lib/us-states";
+import { FIPS_TO_USPS, USPS_TO_FIPS } from "@/lib/us-states";
 
 export function normalizeFips(raw: string | number | undefined | null): string | null {
   if (raw == null || raw === "") return null;
@@ -95,3 +95,39 @@ export function boundsForFeatures(
     [maxX, maxY],
   ];
 }
+
+export function countyLabelFromFips(
+  fips: string,
+  features: GeoJSON.Feature[],
+): string | null {
+  const feature = features.find((f) => fipsFromGeoFeature(f) === fips);
+  if (!feature?.properties) return null;
+  const name = feature.properties.NAME ?? feature.properties.name;
+  if (!name) return null;
+  const stateFips = String(feature.properties.STATE ?? "").padStart(2, "0");
+  const state = FIPS_TO_USPS[stateFips] ?? stateFips;
+  return `${name}, ${state}`;
+}
+
+export function territoryIdsForFips(
+  assignments: Record<string, { territoryId: string } | undefined>,
+  fipsCodes: Iterable<string>,
+): string[] {
+  const ids = new Set<string>();
+  for (const fips of fipsCodes) {
+    const id = assignments[fips]?.territoryId;
+    if (id) ids.add(id);
+  }
+  return [...ids];
+}
+
+export function fipsForTerritoryIds(
+  assignments: Record<string, { territoryId: string } | undefined>,
+  territoryIds: Iterable<string>,
+): string[] {
+  const wanted = new Set(territoryIds);
+  return Object.entries(assignments)
+    .filter(([, assignment]) => assignment && wanted.has(assignment.territoryId))
+    .map(([fips]) => fips);
+}
+

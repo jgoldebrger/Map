@@ -61,6 +61,15 @@ function buildWhere(params: URLSearchParams): Prisma.ZipCodeWhereInput | undefin
     and.push({ county: { fipsCode: { in: fips } } });
   }
 
+  const territoryIds = params
+    .get("filterTerritoryIds")
+    ?.split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+  if (territoryIds && territoryIds.length > 0) {
+    and.push({ county: { assignment: { territoryId: { in: territoryIds } } } });
+  }
+
   const overridesOnly = params.get("overridesOnly") === "1";
   if (overridesOnly) {
     and.push({ assignment: { isNot: null } });

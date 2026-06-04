@@ -305,6 +305,8 @@ export default function MapEditorPage() {
           <ZipAssignPanel
             assignTerritoryId={assignTerritoryId}
             selectedCountyFips={selectedFips}
+            assignments={assignments}
+            countyFeatures={countyFeatures}
             onClose={() => setZipPanelOpen(false)}
             onMessage={setZipMessage}
           />
