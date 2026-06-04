@@ -17,6 +17,7 @@
     "db:studio": "prisma studio",
     "import:counties": "tsx scripts/import-counties.ts",
     "import:zips": "tsx scripts/import-zips.ts",
+    "import:zcta": "tsx scripts/import-zcta.ts",
     "backfill:zip-cities": "tsx scripts/backfill-zip-cities.ts",
     "import:all": "tsx scripts/import-counties.ts && tsx scripts/import-zips.ts",
     "build:pmtiles": "tsx scripts/build-pmtiles.ts",

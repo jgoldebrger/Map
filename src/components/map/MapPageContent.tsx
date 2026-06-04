@@ -9,6 +9,7 @@ import { MapLegend } from "@/components/map/MapLegend";
 import { CountyPanel } from "@/components/map/CountyPanel";
 import { MapSearch } from "@/components/map/MapSearch";
 import { useTerritoryAssignments } from "@/hooks/useTerritoryAssignments";
+import { useZipOverrideGeoJson } from "@/hooks/useZipOverrideGeoJson";
 import { useCountyDetail, normalizeFips } from "@/hooks/useCountyDetail";
 
 const MapboxMap = dynamic(
@@ -20,6 +21,7 @@ export type MapPageVariant = "full" | "embed" | "admin";
 
 export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant }) {
   const { data: assignments = {}, isLoading } = useTerritoryAssignments();
+  const { data: zipOverrideGeoJson } = useZipOverrideGeoJson();
   const [selectedFips, setSelectedFips] = useState<string | null>(null);
   const [hoverInfo, setHoverInfo] = useState<string | null>(null);
 
@@ -66,6 +68,7 @@ export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant 
         ) : (
           <MapboxMap
             assignments={assignments}
+            zipOverrideGeoJson={zipOverrideGeoJson ?? null}
             mode="view"
             onCountyClick={handleCountyClick}
             onCountyHover={setHoverInfo}

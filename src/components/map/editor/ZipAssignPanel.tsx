@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useInvalidateZipOverrideGeoJson } from "@/hooks/useZipOverrideGeoJson";
 
 export type ZipRowWithAssignment = {
   zip: string;
@@ -46,6 +47,7 @@ export function ZipAssignPanel({
   const [loading, setLoading] = useState(false);
   const [selectedZips, setSelectedZips] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const invalidateZipGeo = useInvalidateZipOverrideGeoJson();
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -118,6 +120,7 @@ export function ZipAssignPanel({
     }
     setSelectedZips(new Set());
     onMessage?.(`Assigned ${count} ZIP code(s) — overrides county assignment for lookup.`);
+    invalidateZipGeo();
     load();
   };
 
@@ -139,6 +142,7 @@ export function ZipAssignPanel({
     const data = await res.json();
     setSelectedZips(new Set());
     onMessage?.(`Cleared ${data.cleared ?? 0} ZIP override(s) — using county assignment again.`);
+    invalidateZipGeo();
     load();
   };
 

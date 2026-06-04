@@ -56,5 +56,8 @@ export function useSyncTerritoryAssignments() {
     qc.setQueryData<AssignmentMap>(["assignments"], (current) =>
       updateTerritoryInAssignmentMap(current ?? {}, territoryId, updates),
     );
+    if (updates.color !== undefined) {
+      void qc.invalidateQueries({ queryKey: ["zip-override-geojson"] });
+    }
   };
 }

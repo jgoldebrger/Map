@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useTerritoryAssignments, usePatchAssignments, useRevertAssignments } from "@/hooks/useTerritoryAssignments";
+import { useZipOverrideGeoJson } from "@/hooks/useZipOverrideGeoJson";
 import { useMapEditorHistory } from "@/hooks/useMapEditorHistory";
 import { MapLegend } from "@/components/map/MapLegend";
 import { UndoRedoToolbar } from "@/components/map/editor/UndoRedoToolbar";
@@ -41,6 +42,7 @@ type Territory = {
 
 export default function MapEditorPage() {
   const { data: assignments = {}, isLoading } = useTerritoryAssignments();
+  const { data: zipOverrideGeoJson } = useZipOverrideGeoJson();
   const patchAssignments = usePatchAssignments();
   const revertAssignments = useRevertAssignments();
   const { push, undo, canUndo, canRedo } = useMapEditorHistory();
@@ -268,6 +270,7 @@ export default function MapEditorPage() {
         {!isLoading && (
           <MapboxMap
             assignments={assignments}
+            zipOverrideGeoJson={zipOverrideGeoJson ?? null}
             mode="edit"
             selectedFips={selectedFips}
             onCountyClick={handleCountyClick}
