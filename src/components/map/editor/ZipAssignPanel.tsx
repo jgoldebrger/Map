@@ -60,7 +60,7 @@ export function ZipAssignPanel({
   const [loading, setLoading] = useState(false);
   const [selectedZips, setSelectedZips] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
-  const invalidateZipGeo = useInvalidateZipOverrideGeoJson();
+  const refreshZipGeo = useInvalidateZipOverrideGeoJson();
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -164,8 +164,8 @@ export function ZipAssignPanel({
     }
     setSelectedZips(new Set());
     onMessage?.(`Assigned ${count} ZIP code(s) — overrides county assignment for lookup.`);
-    invalidateZipGeo();
-    load();
+    await refreshZipGeo();
+    await load();
   };
 
   const handleClearOverrides = async () => {
@@ -186,8 +186,8 @@ export function ZipAssignPanel({
     const data = await res.json();
     setSelectedZips(new Set());
     onMessage?.(`Cleared ${data.cleared ?? 0} ZIP override(s) — using county assignment again.`);
-    invalidateZipGeo();
-    load();
+    await refreshZipGeo();
+    await load();
   };
 
   return (

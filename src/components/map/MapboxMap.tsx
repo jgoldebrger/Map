@@ -339,7 +339,7 @@ export function MapboxMap({
     const applyColors = () => {
       if (!map.isStyleLoaded()) return;
       ensureCountyLayers(map, assignmentsRef.current);
-      const zipGeo = zipGeoRef.current;
+      const zipGeo = zipOverrideGeoJson ?? zipGeoRef.current;
       if (zipGeo?.features?.length) {
         ensureZipOverrideLayers(map, zipGeo);
       } else if (map.getSource("zip-overrides") && "setData" in map.getSource("zip-overrides")!) {
@@ -355,7 +355,7 @@ export function MapboxMap({
     if (!map.isStyleLoaded()) {
       map.once("load", applyColors);
     }
-  }, [colorRevision, zipRevision]);
+  }, [colorRevision, zipRevision, zipOverrideGeoJson]);
 
   useEffect(() => {
     const map = mapRef.current;

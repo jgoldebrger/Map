@@ -9,6 +9,7 @@ import {
   type AssignmentMap,
   type assignmentFromTerritory,
 } from "@/lib/queries/assignments";
+import { refreshZipOverrideGeoJson } from "@/hooks/useZipOverrideGeoJson";
 
 type TerritoryForAssignment = Parameters<typeof assignmentFromTerritory>[0];
 
@@ -57,7 +58,7 @@ export function useSyncTerritoryAssignments() {
       updateTerritoryInAssignmentMap(current ?? {}, territoryId, updates),
     );
     if (updates.color !== undefined) {
-      void qc.invalidateQueries({ queryKey: ["zip-override-geojson"] });
+      void refreshZipOverrideGeoJson(qc);
     }
   };
 }

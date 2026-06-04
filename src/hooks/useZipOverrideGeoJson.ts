@@ -1,4 +1,5 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 import { buildZipOverrideGeoJson, type ZipOverrideRow } from "@/lib/zcta-geo";
 
 export type ZipOverrideGeoJson = GeoJSON.FeatureCollection & {
@@ -25,11 +26,12 @@ async function fetchZipOverrideGeoJson(): Promise<ZipOverrideGeoJson> {
 }
 
 export function zipOverrideGeoRevision(data: ZipOverrideGeoJson | undefined): string {
-  if (!data?.features?.length) return "";
-  return data.features
+  const count = data?.meta?.overrideCount ?? data?.features?.length ?? 0;
+  if (!data?.features?.length) return `empty:${count}`;
+  return `${count}:${data.features
     .map((f) => `${f.properties?.zip}:${f.properties?.color}`)
     .sort()
-    .join("|");
+    .join("|")}`;
 }
 
 export function useZipOverrideGeoJson() {
@@ -37,10 +39,21 @@ export function useZipOverrideGeoJson() {
     queryKey: ["zip-override-geojson"],
     queryFn: fetchZipOverrideGeoJson,
     staleTime: 0,
+    structuralSharing: false,
+    refetchOnWindowFocus: true,
   });
 }
 
-export function useInvalidateZipOverrideGeoJson() {
+export async function refreshZipOverrideGeoJson(qc: QueryClient) {
+  await qc.refetchQueries({ queryKey: ["zip-override-geojson"] });
+}
+
+export function useRefreshZipOverrideGeoJson() {
   const qc = useQueryClient();
-  return () => qc.invalidateQueries({ queryKey: ["zip-override-geojson"] });
+  return useCallback(() => refreshZipOverrideGeoJson(qc), [qc]);
+}
+
+export function useInvalidateZipOverrideGeoJson() {
+  const refresh = useRefreshZipOverrideGeoJson();
+  return refresh;
 }
