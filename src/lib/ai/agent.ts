@@ -8,10 +8,17 @@ import {
 } from "@langchain/core/messages";
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import { createShippingTools } from "@/lib/ai/tools/shipping-tools";
+import {
+  getShippingRefusalMessage,
+  isOffTopicShippingQuestion,
+  SHIPPING_ONLY_SYSTEM_RULES,
+} from "@/lib/ai/shipping-scope";
 import type { ScheduleAnswer } from "@/lib/shipping/schedule";
 import type { AskMessage } from "@/lib/validators/ask";
 
 const SYSTEM_PROMPT = `You are a shipping schedule assistant for Fabuwood Logistics territory maps.
+
+${SHIPPING_ONLY_SYSTEM_RULES}
 
 Rules:
 - ALWAYS call the appropriate tools before stating ship dates, territories, or cutoffs. Never invent data.
@@ -45,6 +52,10 @@ export async function runShippingAgent(
   message: string,
   history: AskMessage[] = [],
 ): Promise<AgentResult> {
+  if (isOffTopicShippingQuestion(message)) {
+    return { answer: getShippingRefusalMessage(), sources: [] };
+  }
+
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY is not configured");
@@ -80,7 +91,11 @@ export async function runShippingAgent(
           : response.content
               .map((part) => ("text" in part ? part.text : ""))
               .join("");
-      return { answer: content.trim() || "I couldn't generate an answer.", sources };
+      const answer = content.trim() || "I couldn't generate an answer.";
+      if (sources.length === 0 && isOffTopicShippingQuestion(message)) {
+        return { answer: getShippingRefusalMessage(), sources: [] };
+      }
+      return { answer, sources };
     }
 
     for (const toolCall of toolCalls) {
