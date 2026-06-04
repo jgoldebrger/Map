@@ -11,6 +11,7 @@ export type MapMode = "view" | "edit";
 
 function ensureZipOverrideLayers(map: mapboxgl.Map, geojson: GeoJSON.FeatureCollection) {
   const sourceId = "zip-overrides";
+  const maskId = "zip-overrides-mask";
   const fillId = "zip-overrides-fill";
 
   const existing = map.getSource(sourceId);
@@ -18,6 +19,21 @@ function ensureZipOverrideLayers(map: mapboxgl.Map, geojson: GeoJSON.FeatureColl
     existing.setData(geojson);
   } else if (!existing) {
     map.addSource(sourceId, { type: "geojson", data: geojson, generateId: true });
+  }
+
+  if (!map.getLayer(maskId)) {
+    map.addLayer(
+      {
+        id: maskId,
+        type: "fill",
+        source: sourceId,
+        paint: {
+          "fill-color": "#f1f5f9",
+          "fill-opacity": 1,
+        },
+      },
+      map.getLayer(fillId) ? fillId : "counties-selected",
+    );
   }
 
   if (!map.getLayer(fillId)) {
@@ -28,7 +44,7 @@ function ensureZipOverrideLayers(map: mapboxgl.Map, geojson: GeoJSON.FeatureColl
         source: sourceId,
         paint: {
           "fill-color": ["coalesce", ["get", "color"], "#94a3b8"],
-          "fill-opacity": 0.88,
+          "fill-opacity": 1,
           "fill-outline-color": "#334155",
         },
       },

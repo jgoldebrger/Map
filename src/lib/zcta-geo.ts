@@ -1,3 +1,6 @@
+import buffer from "@turf/buffer";
+import { feature as turfFeature } from "@turf/helpers";
+
 type GeoCollection = GeoJSON.FeatureCollection;
 
 export type ZipOverrideRow = {
@@ -7,7 +10,21 @@ export type ZipOverrideRow = {
   territoryName: string;
 };
 
+/** Expand ZCTA shapes slightly so they cover county fill at boundaries. */
+const MAP_DISPLAY_BUFFER_KM = 0.75;
+
 const stateCache = new Map<string, GeoCollection>();
+
+function geometryForMapDisplay(geometry: GeoJSON.Geometry): GeoJSON.Geometry {
+  try {
+    const expanded = buffer(turfFeature(geometry), MAP_DISPLAY_BUFFER_KM, {
+      units: "kilometers",
+    });
+    return expanded?.geometry ?? geometry;
+  } catch {
+    return geometry;
+  }
+}
 
 async function loadStateGeo(state: string): Promise<GeoCollection | null> {
   const st = state.toUpperCase().slice(0, 2);
@@ -62,7 +79,7 @@ export async function buildZipOverrideGeoJson(
             color: meta.color,
             territoryName: meta.territoryName,
           },
-          geometry: feature.geometry,
+          geometry: geometryForMapDisplay(feature.geometry),
         });
       }
     }),
