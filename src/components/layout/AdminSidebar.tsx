@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Map,
   MapPin,
+  Globe,
   FileUp,
   History,
   Layers,
@@ -28,6 +29,7 @@ const allLinks: {
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/shipping-methods", label: "Shipping Methods", icon: Truck },
   { href: "/admin/territories", label: "Territories", icon: Layers },
+  { href: "/admin/live-map", label: "Live Map", icon: Globe },
   {
     href: "/admin/map",
     label: "Map Editor",

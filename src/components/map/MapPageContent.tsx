@@ -16,7 +16,7 @@ const MapboxMap = dynamic(
   { ssr: false, loading: () => <div className="h-full w-full bg-muted animate-pulse" /> },
 );
 
-export type MapPageVariant = "full" | "embed";
+export type MapPageVariant = "full" | "embed" | "admin";
 
 export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant }) {
   const { data: assignments = {}, isLoading } = useTerritoryAssignments();
@@ -34,10 +34,16 @@ export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant 
   } = useCountyDetail(selectedFips);
 
   return (
-    <div className="h-screen flex flex-col">
+    <div
+      className={
+        variant === "admin"
+          ? "h-full flex flex-col min-h-0"
+          : "h-screen flex flex-col"
+      }
+    >
       {variant === "full" ? (
         <SiteHeader />
-      ) : (
+      ) : variant === "embed" ? (
         <div className="flex shrink-0 items-center justify-between border-b bg-white px-4 py-2 text-sm">
           <span className="font-medium">Fabuwood shipping territories</span>
           <Link
@@ -50,7 +56,7 @@ export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant 
             <ExternalLink className="h-3.5 w-3.5" />
           </Link>
         </div>
-      )}
+      ) : null}
 
       <div className="flex-1 relative min-h-0">
         {isLoading ? (

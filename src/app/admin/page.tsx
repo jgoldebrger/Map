@@ -6,7 +6,6 @@ import { Layers, MapPin, Hash, Truck, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { usePermissions } from "@/hooks/usePermissions";
 
 type Stats = {
   shippingMethods: number;
@@ -25,7 +24,6 @@ type Stats = {
 };
 
 export default function AdminDashboard() {
-  const { canWrite, hasPermission } = usePermissions();
   const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
@@ -53,8 +51,8 @@ export default function AdminDashboard() {
           icon={MapPin}
           label="Counties"
           value={stats?.counties}
-          href={hasPermission("county:assign") ? "/admin/map" : "/map"}
-          linkLabel={canWrite ? "Manage" : "View map"}
+          href="/admin/live-map"
+          linkLabel="View map"
         />
         <StatCard icon={Hash} label="ZIP Codes" value={stats?.zipCodes} href="/admin/zipcodes" />
       </div>
