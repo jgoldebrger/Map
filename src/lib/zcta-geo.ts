@@ -1,30 +1,14 @@
-import buffer from "@turf/buffer";
-import { feature as turfFeature } from "@turf/helpers";
-
 type GeoCollection = GeoJSON.FeatureCollection;
 
 export type ZipOverrideRow = {
   zip: string;
   state: string;
+  fips: string;
   color: string;
   territoryName: string;
 };
 
-/** Expand ZCTA shapes slightly so they cover county fill at boundaries. */
-const MAP_DISPLAY_BUFFER_KM = 0.75;
-
 const stateCache = new Map<string, GeoCollection>();
-
-function geometryForMapDisplay(geometry: GeoJSON.Geometry): GeoJSON.Geometry {
-  try {
-    const expanded = buffer(turfFeature(geometry), MAP_DISPLAY_BUFFER_KM, {
-      units: "kilometers",
-    });
-    return expanded?.geometry ?? geometry;
-  } catch {
-    return geometry;
-  }
-}
 
 async function loadStateGeo(state: string): Promise<GeoCollection | null> {
   const st = state.toUpperCase().slice(0, 2);
@@ -50,14 +34,22 @@ export async function buildZipOverrideGeoJson(
   }
 
   const byState = new Map<string, Set<string>>();
-  const metaByZip = new Map<string, { color: string; territoryName: string }>();
+  const metaByZip = new Map<
+    string,
+    { fips: string; color: string; territoryName: string }
+  >();
 
   for (const row of overrides) {
     const zip = row.zip.padStart(5, "0").slice(-5);
     const st = row.state.toUpperCase().slice(0, 2);
+    const fips = row.fips.padStart(5, "0").slice(-5);
     if (!byState.has(st)) byState.set(st, new Set());
     byState.get(st)!.add(zip);
-    metaByZip.set(zip, { color: row.color, territoryName: row.territoryName });
+    metaByZip.set(zip, {
+      fips,
+      color: row.color,
+      territoryName: row.territoryName,
+    });
   }
 
   const features: GeoJSON.Feature[] = [];
@@ -76,10 +68,11 @@ export async function buildZipOverrideGeoJson(
           type: "Feature",
           properties: {
             zip,
+            fips: meta.fips,
             color: meta.color,
             territoryName: meta.territoryName,
           },
-          geometry: geometryForMapDisplay(feature.geometry),
+          geometry: feature.geometry,
         });
       }
     }),

@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import type { AssignmentMap } from "@/lib/queries/assignments";
 import { assignmentColorRevision } from "@/lib/queries/assignments";
+import { applyZipHolesToCounties, fetchBaseCountiesGeoJson } from "@/lib/map/county-zip-holes";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN?.trim() ?? "";
 
@@ -11,29 +12,17 @@ export type MapMode = "view" | "edit";
 
 function ensureZipOverrideLayers(map: mapboxgl.Map, geojson: GeoJSON.FeatureCollection) {
   const sourceId = "zip-overrides";
-  const maskId = "zip-overrides-mask";
   const fillId = "zip-overrides-fill";
+
+  if (map.getLayer("zip-overrides-mask")) {
+    map.removeLayer("zip-overrides-mask");
+  }
 
   const existing = map.getSource(sourceId);
   if (existing && "setData" in existing) {
     existing.setData(geojson);
   } else if (!existing) {
     map.addSource(sourceId, { type: "geojson", data: geojson, generateId: true });
-  }
-
-  if (!map.getLayer(maskId)) {
-    map.addLayer(
-      {
-        id: maskId,
-        type: "fill",
-        source: sourceId,
-        paint: {
-          "fill-color": "#f1f5f9",
-          "fill-opacity": 1,
-        },
-      },
-      map.getLayer(fillId) ? fillId : "counties-selected",
-    );
   }
 
   if (!map.getLayer(fillId)) {
@@ -63,6 +52,21 @@ function ensureZipOverrideLayers(map: mapboxgl.Map, geojson: GeoJSON.FeatureColl
       },
       "counties-selected",
     );
+  }
+}
+
+async function updateCountyDisplay(
+  map: mapboxgl.Map,
+  zipGeo: GeoJSON.FeatureCollection | null | undefined,
+) {
+  const source = map.getSource("counties") as mapboxgl.GeoJSONSource | undefined;
+  if (!source) return;
+
+  const base = await fetchBaseCountiesGeoJson();
+  if (zipGeo?.features?.length) {
+    source.setData(applyZipHolesToCounties(base, zipGeo));
+  } else {
+    source.setData(base);
   }
 }
 
@@ -220,10 +224,13 @@ export function MapboxMap({
 
     const handleLoad = () => {
       ensureCountyLayers(map, assignmentsRef.current);
-      if (zipGeoRef.current?.features?.length) {
-        ensureZipOverrideLayers(map, zipGeoRef.current);
-      }
-      onMapReadyRef.current?.(map);
+      void (async () => {
+        await updateCountyDisplay(map, zipGeoRef.current);
+        if (zipGeoRef.current?.features?.length) {
+          ensureZipOverrideLayers(map, zipGeoRef.current);
+        }
+        onMapReadyRef.current?.(map);
+      })();
     };
 
     map.on("load", handleLoad);
@@ -356,15 +363,19 @@ export function MapboxMap({
       if (!map.isStyleLoaded()) return;
       ensureCountyLayers(map, assignmentsRef.current);
       const zipGeo = zipOverrideGeoJson ?? zipGeoRef.current;
-      if (zipGeo?.features?.length) {
-        ensureZipOverrideLayers(map, zipGeo);
-      } else if (map.getSource("zip-overrides") && "setData" in map.getSource("zip-overrides")!) {
-        (map.getSource("zip-overrides") as mapboxgl.GeoJSONSource).setData({
-          type: "FeatureCollection",
-          features: [],
-        });
-      }
-      map.triggerRepaint();
+
+      void (async () => {
+        await updateCountyDisplay(map, zipGeo);
+        if (zipGeo?.features?.length) {
+          ensureZipOverrideLayers(map, zipGeo);
+        } else if (map.getSource("zip-overrides") && "setData" in map.getSource("zip-overrides")!) {
+          (map.getSource("zip-overrides") as mapboxgl.GeoJSONSource).setData({
+            type: "FeatureCollection",
+            features: [],
+          });
+        }
+        map.triggerRepaint();
+      })();
     };
 
     applyColors();

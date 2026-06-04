@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 export async function GET() {
   const rows = await prisma.zipCodeAssignment.findMany({
     include: {
-      zipCode: { select: { zip: true, county: { select: { state: true } } } },
+      zipCode: { select: { zip: true, county: { select: { state: true, fipsCode: true } } } },
       territory: { select: { name: true, color: true } },
     },
   });
@@ -12,6 +12,7 @@ export async function GET() {
   const overrides = rows.map((r) => ({
     zip: r.zipCode.zip,
     state: r.zipCode.county.state,
+    fips: r.zipCode.county.fipsCode,
     color: r.territory.color,
     territoryName: r.territory.name,
   }));
