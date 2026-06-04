@@ -14,6 +14,9 @@ const denyFramingHeaders = [
 const nextConfig: NextConfig = {
   output: "standalone",
   transpilePackages: ["mapbox-gl"],
+  outputFileTracingExcludes: {
+    "/api/zipcodes/assignments/geojson": ["./public/geo/zcta/**"],
+  },
   async headers() {
     return [
       {

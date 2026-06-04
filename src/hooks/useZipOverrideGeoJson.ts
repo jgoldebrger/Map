@@ -1,17 +1,27 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { buildZipOverrideGeoJson, type ZipOverrideRow } from "@/lib/zcta-geo";
 
 export type ZipOverrideGeoJson = GeoJSON.FeatureCollection & {
   meta?: {
     overrideCount: number;
     renderedCount: number;
-    zctaAvailable: boolean;
   };
 };
 
-export async function fetchZipOverrideGeoJson(): Promise<ZipOverrideGeoJson> {
+async function fetchZipOverrideGeoJson(): Promise<ZipOverrideGeoJson> {
   const res = await fetch("/api/zipcodes/assignments/geojson", { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to load ZIP override map data");
-  return res.json();
+
+  const { overrides } = (await res.json()) as { overrides: ZipOverrideRow[] };
+  const geojson = await buildZipOverrideGeoJson(overrides);
+
+  return {
+    ...geojson,
+    meta: {
+      overrideCount: overrides.length,
+      renderedCount: geojson.features.length,
+    },
+  };
 }
 
 export function zipOverrideGeoRevision(data: ZipOverrideGeoJson | undefined): string {
