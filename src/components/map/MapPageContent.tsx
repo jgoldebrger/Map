@@ -13,6 +13,7 @@ import { useTerritoryAssignments } from "@/hooks/useTerritoryAssignments";
 import { useZipOverrideGeoJson } from "@/hooks/useZipOverrideGeoJson";
 import { useCountyDetail, normalizeFips } from "@/hooks/useCountyDetail";
 import { useZipLookup } from "@/hooks/useZipLookup";
+import { AskMapsFloat } from "@/components/lookup/AskMapsFloat";
 
 const MapboxMap = dynamic(
   () => import("@/components/map/MapboxMap").then((m) => m.MapboxMap),
@@ -145,6 +146,8 @@ export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant 
             onClose={() => setSelection(null)}
           />
         )}
+
+        <AskMapsFloat />
       </div>
     </div>
   );

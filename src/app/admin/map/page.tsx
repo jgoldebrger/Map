@@ -23,6 +23,7 @@ import { ZipAssignPanel } from "@/components/map/editor/ZipAssignPanel";
 import { StateMultiSelect } from "@/components/map/editor/StateMultiSelect";
 import { boundsForFeatures, countyFipsInStates, featuresInStates } from "@/lib/county-geo";
 import type { AssignmentMap } from "@/lib/queries/assignments";
+import { AskMapsFloat } from "@/components/lookup/AskMapsFloat";
 
 const MapboxMap = dynamic(
   () => import("@/components/map/MapboxMap").then((m) => m.MapboxMap),
@@ -311,6 +312,7 @@ export default function MapEditorPage() {
             onMessage={setZipMessage}
           />
         )}
+        <AskMapsFloat />
       </div>
     </div>
   );

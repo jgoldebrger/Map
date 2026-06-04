@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { LookupResult } from "@/lib/services/lookup";
-import { ShipDateChat } from "@/components/lookup/ShipDateChat";
+import { AskMapsFloat } from "@/components/lookup/AskMapsFloat";
 
 function LookupPageContent() {
   const searchParams = useSearchParams();
@@ -127,7 +127,7 @@ function LookupPageContent() {
               result.map((r, i) => <ResultCard key={`${r.territory}-${i}`} result={r} />)}
           </CardContent>
         </Card>
-        <ShipDateChat />
+        <AskMapsFloat />
       </main>
     </div>
   );
