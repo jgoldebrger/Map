@@ -7,10 +7,12 @@ import { ExternalLink } from "lucide-react";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { MapLegend } from "@/components/map/MapLegend";
 import { CountyPanel } from "@/components/map/CountyPanel";
+import { ZipDetailPanel } from "@/components/map/ZipDetailPanel";
 import { MapSearch } from "@/components/map/MapSearch";
 import { useTerritoryAssignments } from "@/hooks/useTerritoryAssignments";
 import { useZipOverrideGeoJson } from "@/hooks/useZipOverrideGeoJson";
 import { useCountyDetail, normalizeFips } from "@/hooks/useCountyDetail";
+import { useZipLookup } from "@/hooks/useZipLookup";
 
 const MapboxMap = dynamic(
   () => import("@/components/map/MapboxMap").then((m) => m.MapboxMap),
@@ -19,14 +21,29 @@ const MapboxMap = dynamic(
 
 export type MapPageVariant = "full" | "embed" | "admin";
 
+type MapSelection =
+  | { kind: "county"; fips: string }
+  | { kind: "zip"; zip: string }
+  | null;
+
 export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant }) {
   const { data: assignments = {}, isLoading } = useTerritoryAssignments();
   const { data: zipOverrideGeoJson } = useZipOverrideGeoJson();
-  const [selectedFips, setSelectedFips] = useState<string | null>(null);
+  const [selection, setSelection] = useState<MapSelection>(null);
   const [hoverInfo, setHoverInfo] = useState<string | null>(null);
+  const [zipHoverInfo, setZipHoverInfo] = useState<{ zip: string; territoryName: string } | null>(
+    null,
+  );
+
+  const selectedFips = selection?.kind === "county" ? selection.fips : null;
+  const selectedZip = selection?.kind === "zip" ? selection.zip : null;
 
   const handleCountyClick = useCallback((fips: string) => {
-    setSelectedFips(normalizeFips(fips));
+    setSelection({ kind: "county", fips: normalizeFips(fips) });
+  }, []);
+
+  const handleZipClick = useCallback((zip: string) => {
+    setSelection({ kind: "zip", zip });
   }, []);
 
   const {
@@ -34,6 +51,12 @@ export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant 
     isLoading: countyLoading,
     error: countyError,
   } = useCountyDetail(selectedFips);
+
+  const {
+    data: zipDetail,
+    isLoading: zipLoading,
+    error: zipError,
+  } = useZipLookup(selectedZip);
 
   return (
     <div
@@ -71,17 +94,28 @@ export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant 
             zipOverrideGeoJson={zipOverrideGeoJson ?? null}
             mode="view"
             onCountyClick={handleCountyClick}
+            onZipClick={handleZipClick}
             onCountyHover={setHoverInfo}
+            onZipHover={setZipHoverInfo}
             className="h-full w-full"
           />
         )}
 
         <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
           <MapSearch />
-          {hoverInfo && assignments[hoverInfo] && (
+          {zipHoverInfo ? (
             <div className="rounded-md border bg-white px-3 py-2 text-sm shadow">
-              <span className="font-medium">{assignments[hoverInfo].territoryName}</span>
+              <span className="font-mono font-medium">{zipHoverInfo.zip}</span>
+              <span className="mx-1.5 text-muted-foreground">·</span>
+              <span className="font-medium">{zipHoverInfo.territoryName}</span>
             </div>
+          ) : (
+            hoverInfo &&
+            assignments[hoverInfo] && (
+              <div className="rounded-md border bg-white px-3 py-2 text-sm shadow">
+                <span className="font-medium">{assignments[hoverInfo].territoryName}</span>
+              </div>
+            )
           )}
         </div>
 
@@ -94,13 +128,23 @@ export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant 
           }
         />
 
-        <CountyPanel
-          fips={selectedFips}
-          detail={countyDetail}
-          isLoading={countyLoading}
-          error={countyError}
-          onClose={() => setSelectedFips(null)}
+        <ZipDetailPanel
+          zip={selectedZip}
+          detail={zipDetail}
+          isLoading={zipLoading}
+          error={zipError}
+          onClose={() => setSelection(null)}
         />
+
+        {!selectedZip && (
+          <CountyPanel
+            fips={selectedFips}
+            detail={countyDetail}
+            isLoading={countyLoading}
+            error={countyError}
+            onClose={() => setSelection(null)}
+          />
+        )}
       </div>
     </div>
   );

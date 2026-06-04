@@ -11,8 +11,11 @@ export type LookupResult = {
   state?: string;
   city?: string;
   zip?: string;
+  color?: string | null;
   /** True when territory comes from a ZIP-level override, not the county default. */
   zipOverride?: boolean;
+  countyTerritory?: string | null;
+  countyTerritoryColor?: string | null;
 };
 
 const UNASSIGNED_TERRITORY = "Not assigned";
@@ -21,6 +24,7 @@ const UNASSIGNED_METHOD = "—";
 function fromTerritory(
   t: {
     name: string;
+    color?: string | null;
     shipDay: string | null;
     cutoffDay: string | null;
     notes: string | null;
@@ -34,6 +38,7 @@ function fromTerritory(
     shipDay: t.shipDay,
     cutoffDay: t.cutoffDay,
     notes: t.notes,
+    color: t.color ?? null,
     ...location,
   };
 }
@@ -87,7 +92,13 @@ export async function lookupByZip(zip: string): Promise<LookupResult | null> {
   };
 
   if (zipRecord.assignment) {
-    return { ...fromTerritory(zipRecord.assignment.territory, location), zipOverride: true };
+    const countyTerritory = zipRecord.county.assignment?.territory;
+    return {
+      ...fromTerritory(zipRecord.assignment.territory, location),
+      zipOverride: true,
+      countyTerritory: countyTerritory?.name ?? null,
+      countyTerritoryColor: countyTerritory?.color ?? null,
+    };
   }
 
   if (!zipRecord.county.assignment) {

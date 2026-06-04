@@ -64,7 +64,9 @@ export type MapboxMapProps = {
   mode?: MapMode;
   selectedFips?: Set<string>;
   onCountyClick?: (fips: string) => void;
+  onZipClick?: (zip: string) => void;
   onCountyHover?: (fips: string | null) => void;
+  onZipHover?: (info: { zip: string; territoryName: string } | null) => void;
   onBoxSelect?: (fips: string[]) => void;
   onMapReady?: (map: mapboxgl.Map | null) => void;
   className?: string;
@@ -150,7 +152,9 @@ export function MapboxMap({
   mode = "view",
   selectedFips,
   onCountyClick,
+  onZipClick,
   onCountyHover,
+  onZipHover,
   onBoxSelect,
   onMapReady,
   className,
@@ -169,8 +173,14 @@ export function MapboxMap({
   const onCountyClickRef = useRef(onCountyClick);
   onCountyClickRef.current = onCountyClick;
 
+  const onZipClickRef = useRef(onZipClick);
+  onZipClickRef.current = onZipClick;
+
   const onCountyHoverRef = useRef(onCountyHover);
   onCountyHoverRef.current = onCountyHover;
+
+  const onZipHoverRef = useRef(onZipHover);
+  onZipHoverRef.current = onZipHover;
 
   const onBoxSelectRef = useRef(onBoxSelect);
   onBoxSelectRef.current = onBoxSelect;
@@ -202,25 +212,53 @@ export function MapboxMap({
 
     map.on("load", handleLoad);
 
-    const handleClick = (e: mapboxgl.MapLayerMouseEvent) => {
-      const fips = fipsFromFeature(e.features?.[0]?.properties);
+    const handleClick = (e: mapboxgl.MapMouseEvent) => {
+      const zipLayer = map.getLayer("zip-overrides-fill");
+      if (zipLayer) {
+        const zipFeatures = map.queryRenderedFeatures(e.point, { layers: ["zip-overrides-fill"] });
+        const zip = zipFeatures[0]?.properties?.zip;
+        if (typeof zip === "string" && zip.length > 0) {
+          onZipClickRef.current?.(zip);
+          return;
+        }
+      }
+
+      const countyFeatures = map.queryRenderedFeatures(e.point, { layers: ["counties-fill"] });
+      const fips = fipsFromFeature(countyFeatures[0]?.properties);
       if (fips) onCountyClickRef.current?.(fips);
     };
 
-    const handleMouseMove = (e: mapboxgl.MapLayerMouseEvent) => {
+    const handleMouseMove = (e: mapboxgl.MapMouseEvent) => {
+      const zipLayer = map.getLayer("zip-overrides-fill");
+      if (zipLayer) {
+        const zipFeatures = map.queryRenderedFeatures(e.point, { layers: ["zip-overrides-fill"] });
+        const props = zipFeatures[0]?.properties;
+        const zip = props?.zip;
+        const territoryName = props?.territoryName;
+        if (typeof zip === "string" && typeof territoryName === "string") {
+          map.getCanvas().style.cursor = "pointer";
+          onZipHoverRef.current?.({ zip, territoryName });
+          onCountyHoverRef.current?.(null);
+          return;
+        }
+      }
+
       map.getCanvas().style.cursor = "pointer";
-      const fips = fipsFromFeature(e.features?.[0]?.properties);
+      const countyFeatures = map.queryRenderedFeatures(e.point, { layers: ["counties-fill"] });
+      const fips = fipsFromFeature(countyFeatures[0]?.properties);
+      onZipHoverRef.current?.(null);
       onCountyHoverRef.current?.(fips ?? null);
     };
 
     const handleMouseLeave = () => {
       map.getCanvas().style.cursor = "";
+      onZipHoverRef.current?.(null);
       onCountyHoverRef.current?.(null);
     };
 
-    map.on("click", "counties-fill", handleClick);
-    map.on("mousemove", "counties-fill", handleMouseMove);
-    map.on("mouseleave", "counties-fill", handleMouseLeave);
+    map.on("click", handleClick);
+    map.on("mousemove", handleMouseMove);
+    map.on("mouseleave", handleMouseLeave);
 
     let mouseDown: ((e: mapboxgl.MapMouseEvent) => void) | undefined;
     let mouseMove: ((e: mapboxgl.MapMouseEvent) => void) | undefined;
@@ -283,9 +321,9 @@ export function MapboxMap({
     return () => {
       onMapReadyRef.current?.(null);
       map.off("load", handleLoad);
-      map.off("click", "counties-fill", handleClick);
-      map.off("mousemove", "counties-fill", handleMouseMove);
-      map.off("mouseleave", "counties-fill", handleMouseLeave);
+      map.off("click", handleClick);
+      map.off("mousemove", handleMouseMove);
+      map.off("mouseleave", handleMouseLeave);
       if (mouseDown) map.off("mousedown", mouseDown);
       if (mouseMove) map.off("mousemove", mouseMove);
       if (mouseUp) map.off("mouseup", mouseUp);
