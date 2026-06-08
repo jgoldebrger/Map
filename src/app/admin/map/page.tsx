@@ -18,9 +18,11 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import type mapboxgl from "mapbox-gl";
+import { CountySelectionPanel } from "@/components/map/editor/CountySelectionPanel";
 import { PolygonDrawTool } from "@/components/map/editor/PolygonDrawTool";
 import { ZipAssignPanel } from "@/components/map/editor/ZipAssignPanel";
 import { StateMultiSelect } from "@/components/map/editor/StateMultiSelect";
+import type { CountyClickModifiers } from "@/components/map/MapboxMap";
 import { boundsForFeatures, countyFipsInStates, featuresInStates } from "@/lib/county-geo";
 import type { AssignmentMap } from "@/lib/queries/assignments";
 import { AskMapsFloat } from "@/components/lookup/AskMapsFloat";
@@ -29,6 +31,8 @@ const MapboxMap = dynamic(
   () => import("@/components/map/MapboxMap").then((m) => m.MapboxMap),
   { ssr: false, loading: () => <div className="h-full bg-muted animate-pulse" /> }
 );
+
+type CountyClickMode = "add" | "replace";
 
 type Territory = {
   id: string;
@@ -59,6 +63,8 @@ export default function MapEditorPage() {
   const [statePicker, setStatePicker] = useState<Set<string>>(new Set());
   const [zipPanelOpen, setZipPanelOpen] = useState(false);
   const [zipMessage, setZipMessage] = useState<string | null>(null);
+  const [countyClickMode, setCountyClickMode] = useState<CountyClickMode>("add");
+  const [boxSelectMode, setBoxSelectMode] = useState(false);
 
   useEffect(() => {
     fetch("/geo/us-counties.geojson")
@@ -75,28 +81,70 @@ export default function MapEditorPage() {
       );
   }, []);
 
+  const normalizeFips = (fips: string) => fips.padStart(5, "0").slice(-5);
+
   const addSelection = useCallback((fips: string | string[]) => {
     const codes = Array.isArray(fips) ? fips : [fips];
     setSelectedFips((prev) => {
       const next = new Set(prev);
-      codes.forEach((c) => next.add(c.padStart(5, "0").slice(-5)));
+      codes.forEach((c) => next.add(normalizeFips(c)));
       return next;
     });
     setAssignError(null);
   }, []);
 
-  const handleCountyClick = useCallback(
-    (fips: string) => {
-      addSelection(fips);
+  const replaceSelection = useCallback((fips: string | string[]) => {
+    const codes = (Array.isArray(fips) ? fips : [fips]).map(normalizeFips);
+    setSelectedFips(new Set(codes));
+    setAssignError(null);
+  }, []);
+
+  const toggleSelection = useCallback((fips: string) => {
+    const code = normalizeFips(fips);
+    setSelectedFips((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+    setAssignError(null);
+  }, []);
+
+  const removeFromSelection = useCallback((fips: string) => {
+    const code = normalizeFips(fips);
+    setSelectedFips((prev) => {
+      if (!prev.has(code)) return prev;
+      const next = new Set(prev);
+      next.delete(code);
+      return next;
+    });
+  }, []);
+
+  const applyFipsSelection = useCallback(
+    (fips: string[]) => {
+      if (countyClickMode === "replace") replaceSelection(fips);
+      else addSelection(fips);
     },
-    [addSelection],
+    [countyClickMode, addSelection, replaceSelection],
+  );
+
+  const handleCountyClick = useCallback(
+    (fips: string, modifiers?: CountyClickModifiers) => {
+      if (modifiers?.toggle) {
+        toggleSelection(fips);
+        return;
+      }
+      if (countyClickMode === "replace") replaceSelection(fips);
+      else addSelection(fips);
+    },
+    [countyClickMode, addSelection, replaceSelection, toggleSelection],
   );
 
   const handleBoxSelect = useCallback(
     (fips: string[]) => {
-      addSelection(fips);
+      applyFipsSelection(fips);
     },
-    [addSelection],
+    [applyFipsSelection],
   );
 
   const selectStateCounties = useCallback(
@@ -181,8 +229,8 @@ export default function MapEditorPage() {
         <div>
           <h1 className="text-xl font-bold">Map Editor</h1>
           <p className="text-sm text-muted-foreground">
-            Click counties, Shift+drag a box, draw a polygon, or select states. Use ZIP assignments
-            to override county territory for specific ZIP codes (e.g. Florida Keys).
+            Select multiple counties, pick a territory, then Assign. Ctrl+click toggles a county.
+            Box select or draw a polygon to grab many at once.
           </p>
         </div>
         <div className="flex-1" />
@@ -205,6 +253,33 @@ export default function MapEditorPage() {
               className="text-muted-foreground"
             >
               Add states
+            </Button>
+            <div className="flex rounded-md border p-0.5">
+              <Button
+                type="button"
+                size="sm"
+                variant={countyClickMode === "add" ? "default" : "ghost"}
+                className="h-8 rounded-sm px-2.5 text-xs"
+                onClick={() => setCountyClickMode("add")}
+              >
+                Add counties
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={countyClickMode === "replace" ? "default" : "ghost"}
+                className="h-8 rounded-sm px-2.5 text-xs"
+                onClick={() => setCountyClickMode("replace")}
+              >
+                Replace
+              </Button>
+            </div>
+            <Button
+              type="button"
+              variant={boxSelectMode ? "default" : "outline"}
+              onClick={() => setBoxSelectMode((on) => !on)}
+            >
+              {boxSelectMode ? "Box select on" : "Box select"}
             </Button>
             <div className="space-y-1">
               <Label className="text-xs">Assign to</Label>
@@ -260,9 +335,11 @@ export default function MapEditorPage() {
             </p>
           )}
         </div>
-        {polygonMode && (
+        {(polygonMode || boxSelectMode) && (
           <Badge variant="secondary" className="ml-4">
-            Draw a polygon on the map to select counties inside it
+            {boxSelectMode
+              ? "Drag on the map to select counties in a box"
+              : "Draw a polygon on the map to select counties inside it"}
           </Badge>
         )}
       </div>
@@ -274,6 +351,7 @@ export default function MapEditorPage() {
             zipOverrideGeoJson={zipOverrideGeoJson ?? null}
             mode="edit"
             selectedFips={selectedFips}
+            boxSelectEnabled={boxSelectMode}
             onCountyClick={handleCountyClick}
             onBoxSelect={handleBoxSelect}
             onMapReady={setMapInstance}
@@ -284,14 +362,21 @@ export default function MapEditorPage() {
           map={mapInstance}
           enabled={polygonMode}
           countyFeatures={countyFeatures}
-          onSelect={(fips) => addSelection(fips)}
+          onSelect={applyFipsSelection}
         />
-        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 max-w-xs">
-          {selectedFips.size > 0 && (
-            <Badge variant="secondary" className="w-fit">
-              {selectedFips.size} counties selected
-            </Badge>
-          )}
+        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+          <CountySelectionPanel
+            selectedFips={selectedFips}
+            countyFeatures={countyFeatures}
+            assignTerritoryName={
+              territories.find((t) => t.id === assignTerritoryId)?.name ?? null
+            }
+            onRemove={removeFromSelection}
+            onClear={() => setSelectedFips(new Set())}
+            onAssign={handleAssign}
+            assignDisabled={!assignTerritoryId || selectedFips.size === 0}
+            saving={saving}
+          />
           <UndoRedoToolbar
             canUndo={canUndo}
             canRedo={canRedo}

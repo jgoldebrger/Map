@@ -107,12 +107,17 @@ async function updateCountyDisplay(
   }
 }
 
+export type CountyClickModifiers = {
+  toggle?: boolean;
+};
+
 export type MapboxMapProps = {
   assignments: AssignmentMap;
   zipOverrideGeoJson?: ZipOverrideGeoJson | null;
   mode?: MapMode;
   selectedFips?: Set<string>;
-  onCountyClick?: (fips: string) => void;
+  boxSelectEnabled?: boolean;
+  onCountyClick?: (fips: string, modifiers?: CountyClickModifiers) => void;
   onZipClick?: (zip: string) => void;
   onCountyHover?: (fips: string | null) => void;
   onZipHover?: (info: { zip: string; territoryName: string } | null) => void;
@@ -200,6 +205,7 @@ export function MapboxMap({
   zipOverrideGeoJson,
   mode = "view",
   selectedFips,
+  boxSelectEnabled = false,
   onCountyClick,
   onZipClick,
   onCountyHover,
@@ -236,6 +242,9 @@ export function MapboxMap({
 
   const onMapReadyRef = useRef(onMapReady);
   onMapReadyRef.current = onMapReady;
+
+  const boxSelectEnabledRef = useRef(boxSelectEnabled);
+  boxSelectEnabledRef.current = boxSelectEnabled;
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current || !MAPBOX_TOKEN) return;
@@ -283,7 +292,10 @@ export function MapboxMap({
 
       const countyFeatures = map.queryRenderedFeatures(e.point, { layers: ["counties-fill"] });
       const fips = fipsFromFeature(countyFeatures[0]?.properties);
-      if (fips) onCountyClickRef.current?.(fips);
+      if (fips) {
+        const toggle = e.originalEvent.ctrlKey || e.originalEvent.metaKey;
+        onCountyClickRef.current?.(fips, { toggle });
+      }
     };
 
     const handleMouseMove = (e: mapboxgl.MapMouseEvent) => {
@@ -330,7 +342,7 @@ export function MapboxMap({
       const canvas = map.getCanvasContainer();
 
       mouseDown = (e: mapboxgl.MapMouseEvent) => {
-        if (e.originalEvent.shiftKey) {
+        if (boxSelectEnabledRef.current || e.originalEvent.shiftKey) {
           map.dragPan.disable();
           start = e.point;
           box = document.createElement("div");
