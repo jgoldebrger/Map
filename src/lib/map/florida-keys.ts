@@ -1,3 +1,6 @@
+import area from "@turf/area";
+import { feature as turfFeature } from "@turf/helpers";
+import type { Polygon } from "geojson";
 import type { ZipOverrideRow } from "@/lib/zcta-geo";
 
 export const MONROE_FIPS = "12087";
@@ -26,6 +29,62 @@ export type KeysOverrideStyle = {
   territoryName: string;
 };
 
+export type MonroeSplit = {
+  mainland: GeoJSON.Feature | null;
+  keysIslands: GeoJSON.Feature | null;
+};
+
+/**
+ * Monroe County is a MultiPolygon: one large mainland piece plus Keys islands.
+ * County fill should only use mainland; Keys islands get override display color.
+ */
+export function splitMonroeCounty(county: GeoJSON.Feature): MonroeSplit {
+  const geom = county.geometry;
+  if (!geom || (geom.type !== "Polygon" && geom.type !== "MultiPolygon")) {
+    return { mainland: null, keysIslands: null };
+  }
+
+  const rings: Polygon["coordinates"][] =
+    geom.type === "Polygon" ? [geom.coordinates] : geom.coordinates;
+
+  if (rings.length <= 1) {
+    return { mainland: county, keysIslands: null };
+  }
+
+  let maxArea = -1;
+  let maxIndex = 0;
+  for (let i = 0; i < rings.length; i++) {
+    const partArea = area(turfFeature({ type: "Polygon", coordinates: rings[i] }));
+    if (partArea > maxArea) {
+      maxArea = partArea;
+      maxIndex = i;
+    }
+  }
+
+  const properties = county.properties ?? {};
+  const mainland: GeoJSON.Feature = {
+    type: "Feature",
+    properties,
+    geometry: { type: "Polygon", coordinates: rings[maxIndex] },
+  };
+
+  const keysRings = rings.filter((_, i) => i !== maxIndex);
+  if (keysRings.length === 0) {
+    return { mainland, keysIslands: null };
+  }
+
+  const keysIslands: GeoJSON.Feature = {
+    type: "Feature",
+    properties,
+    geometry:
+      keysRings.length === 1
+        ? { type: "Polygon", coordinates: keysRings[0] }
+        : { type: "MultiPolygon", coordinates: keysRings },
+  };
+
+  return { mainland, keysIslands };
+}
+
 /** Pick display color when Keys ZIPs share one territory; otherwise use the first override. */
 export function resolveKeysOverrideStyle(
   keysOverrides: ZipOverrideRow[],
@@ -45,9 +104,30 @@ export function resolveKeysOverrideStyle(
   };
 }
 
+let monroeCountyCache: GeoJSON.Feature | null = null;
+
+export async function fetchMonroeCountyFeature(): Promise<GeoJSON.Feature | null> {
+  if (monroeCountyCache) return monroeCountyCache;
+
+  const res = await fetch("/geo/us-counties.geojson", { cache: "force-cache" });
+  if (!res.ok) return null;
+
+  try {
+    const data = (await res.json()) as GeoJSON.FeatureCollection;
+    const monroe = data.features.find((f) => {
+      const geoid = f.properties?.GEOID ?? f.properties?.geoid;
+      return String(geoid).padStart(5, "0").slice(-5) === MONROE_FIPS;
+    });
+    monroeCountyCache = monroe ?? null;
+    return monroeCountyCache;
+  } catch {
+    return null;
+  }
+}
+
 let regionCache: GeoJSON.Feature | null = null;
 
-export async function loadFloridaKeysRegion(): Promise<GeoJSON.Feature | null> {
+async function loadFloridaKeysRegionFile(): Promise<GeoJSON.Feature | null> {
   if (regionCache) return regionCache;
 
   const res = await fetch("/geo/regions/florida-keys.geojson", { cache: "force-cache" });
@@ -64,8 +144,23 @@ export async function loadFloridaKeysRegion(): Promise<GeoJSON.Feature | null> {
   }
 }
 
+/** Keys display shape: all non-mainland Monroe county islands (covers gaps ZCTAs miss). */
+export async function loadFloridaKeysDisplayGeometry(): Promise<GeoJSON.Feature | null> {
+  const monroe = await fetchMonroeCountyFeature();
+  if (monroe) {
+    const { keysIslands } = splitMonroeCounty(monroe);
+    if (keysIslands) return keysIslands;
+  }
+  return loadFloridaKeysRegionFile();
+}
+
+export async function loadFloridaKeysRegion(): Promise<GeoJSON.Feature | null> {
+  return loadFloridaKeysDisplayGeometry();
+}
+
 export function clearFloridaKeysRegionCache(): void {
   regionCache = null;
+  monroeCountyCache = null;
 }
 
 export function hasFloridaKeysOverrides(overrides: ZipOverrideRow[]): boolean {

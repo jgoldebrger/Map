@@ -5,7 +5,6 @@ import mapboxgl from "mapbox-gl";
 import type { AssignmentMap } from "@/lib/queries/assignments";
 import { assignmentColorRevision } from "@/lib/queries/assignments";
 import { applyZipHolesToCounties, fetchBaseCountiesGeoJson } from "@/lib/map/county-zip-holes";
-import { loadFloridaKeysRegion } from "@/lib/map/florida-keys";
 import type { ZipOverrideGeoJson } from "@/hooks/useZipOverrideGeoJson";
 import { zipOverrideGeoRevision } from "@/hooks/useZipOverrideGeoJson";
 
@@ -102,9 +101,7 @@ async function updateCountyDisplay(
 
   const base = await fetchBaseCountiesGeoJson();
   if (zipGeo?.hit?.features?.length) {
-    const keysRegion =
-      zipGeo.meta?.usesFloridaKeysRegion ? await loadFloridaKeysRegion() : null;
-    source.setData(applyZipHolesToCounties(base, zipGeo.hit, keysRegion));
+    source.setData(applyZipHolesToCounties(base, zipGeo.hit));
   } else {
     source.setData(base);
   }

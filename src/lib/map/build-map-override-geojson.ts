@@ -1,7 +1,7 @@
 import { buildZipOverrideGeoJson, type ZipOverrideRow } from "@/lib/zcta-geo";
 import {
   isFloridaKeysZip,
-  loadFloridaKeysRegion,
+  loadFloridaKeysDisplayGeometry,
   MONROE_FIPS,
   resolveKeysOverrideStyle,
 } from "@/lib/map/florida-keys";
@@ -26,7 +26,7 @@ export async function buildMapOverrideGeoJson(
 
   if (keysOverrides.length > 0) {
     const style = resolveKeysOverrideStyle(keysOverrides);
-    const region = await loadFloridaKeysRegion();
+    const region = await loadFloridaKeysDisplayGeometry();
 
     if (region && style) {
       displayFeatures.push({

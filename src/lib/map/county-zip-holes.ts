@@ -4,7 +4,7 @@ import { feature as turfFeature, featureCollection } from "@turf/helpers";
 import union from "@turf/union";
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from "geojson";
 import { fipsFromGeoFeature } from "@/lib/county-geo";
-import { isFloridaKeysZip, MONROE_FIPS } from "@/lib/map/florida-keys";
+import { isFloridaKeysZip, MONROE_FIPS, splitMonroeCounty } from "@/lib/map/florida-keys";
 
 type PolygonFeature = Feature<Polygon | MultiPolygon>;
 
@@ -60,11 +60,7 @@ function subtractFromCounty(
   };
 }
 
-function punchCountyHoles(
-  county: GeoJSON.Feature,
-  zipFeatures: GeoJSON.Feature[],
-  keysRegion: PolygonFeature | null,
-): GeoJSON.Feature {
+function punchCountyHoles(county: GeoJSON.Feature, zipFeatures: GeoJSON.Feature[]): GeoJSON.Feature {
   if (zipFeatures.length === 0) return county;
 
   const countyFeature = asPolygonFeature(county);
@@ -84,11 +80,17 @@ function punchCountyHoles(
     .map((z) => asPolygonFeature(z))
     .filter((z): z is PolygonFeature => z !== null);
 
+  if (isMonroe && keysZipFeatures.length > 0) {
+    const { mainland } = splitMonroeCounty(county);
+    if (mainland) {
+      if (otherPolygons.length === 0) return mainland;
+      return punchCountyHoles(mainland, otherZipFeatures);
+    }
+  }
+
   const holes: PolygonFeature[] = [];
 
-  if (isMonroe && keysZipFeatures.length > 0 && keysRegion) {
-    holes.push(keysRegion);
-  } else if (keysZipFeatures.length > 0) {
+  if (keysZipFeatures.length > 0 && !isMonroe) {
     const keysPolygons = keysZipFeatures
       .map((z) => asPolygonFeature(z))
       .filter((z): z is PolygonFeature => z !== null);
@@ -130,13 +132,10 @@ function punchCountyHoles(
 export function applyZipHolesToCounties(
   counties: GeoJSON.FeatureCollection,
   hitGeo: GeoJSON.FeatureCollection,
-  keysRegion: GeoJSON.Feature | null,
 ): GeoJSON.FeatureCollection {
   if (hitGeo.features.length === 0) {
     return counties;
   }
-
-  const keysRegionPolygon = keysRegion ? asPolygonFeature(keysRegion) : null;
 
   const zipsByFips = new Map<string, GeoJSON.Feature[]>();
   for (const zipFeature of hitGeo.features) {
@@ -157,8 +156,7 @@ export function applyZipHolesToCounties(
     if (!fips) return county;
     const zipFeatures = zipsByFips.get(fips);
     if (!zipFeatures?.length) return county;
-    const regionForCounty = fips === MONROE_FIPS ? keysRegionPolygon : null;
-    return punchCountyHoles(county, zipFeatures, regionForCounty);
+    return punchCountyHoles(county, zipFeatures);
   });
 
   return { type: "FeatureCollection", features };
