@@ -6,22 +6,11 @@ import { useTerritoryAssignments, usePatchAssignments, useRevertAssignments } fr
 import { useZipOverrideGeoJson } from "@/hooks/useZipOverrideGeoJson";
 import { useMapEditorHistory } from "@/hooks/useMapEditorHistory";
 import { MapLegend } from "@/components/map/MapLegend";
-import { UndoRedoToolbar } from "@/components/map/editor/UndoRedoToolbar";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import type mapboxgl from "mapbox-gl";
 import { CountySelectionPanel } from "@/components/map/editor/CountySelectionPanel";
+import { MapEditorToolbar } from "@/components/map/editor/MapEditorToolbar";
 import { PolygonDrawTool } from "@/components/map/editor/PolygonDrawTool";
 import { ZipAssignPanel } from "@/components/map/editor/ZipAssignPanel";
-import { StateMultiSelect } from "@/components/map/editor/StateMultiSelect";
 import type { CountyClickModifiers } from "@/components/map/MapboxMap";
 import { boundsForFeatures, countyFipsInStates, featuresInStates } from "@/lib/county-geo";
 import type { AssignmentMap } from "@/lib/queries/assignments";
@@ -50,7 +39,7 @@ export default function MapEditorPage() {
   const { data: zipOverrideGeoJson } = useZipOverrideGeoJson();
   const patchAssignments = usePatchAssignments();
   const revertAssignments = useRevertAssignments();
-  const { push, undo, canUndo, canRedo } = useMapEditorHistory();
+  const { push, undo, canUndo } = useMapEditorHistory();
 
   const [selectedFips, setSelectedFips] = useState<Set<string>>(new Set());
   const [territories, setTerritories] = useState<Territory[]>([]);
@@ -225,124 +214,37 @@ export default function MapEditorPage() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="border-b bg-white p-4 flex flex-wrap items-end gap-4">
-        <div>
-          <h1 className="text-xl font-bold">Map Editor</h1>
-          <p className="text-sm text-muted-foreground">
-            Select multiple counties, pick a territory, then Assign. Ctrl+click toggles a county.
-            Box select or draw a polygon to grab many at once.
-          </p>
-        </div>
-        <div className="flex-1" />
-        <div className="flex flex-col items-end gap-2">
-          <div className="flex flex-wrap items-end gap-2">
-            <StateMultiSelect selected={statePicker} onChange={setStatePicker} />
-            <Button
-              type="button"
-              variant="outline"
-              disabled={statePicker.size === 0}
-              onClick={() => selectStateCounties("replace")}
-            >
-              Select states
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={statePicker.size === 0}
-              onClick={() => selectStateCounties("add")}
-              className="text-muted-foreground"
-            >
-              Add states
-            </Button>
-            <div className="flex rounded-md border p-0.5">
-              <Button
-                type="button"
-                size="sm"
-                variant={countyClickMode === "add" ? "default" : "ghost"}
-                className="h-8 rounded-sm px-2.5 text-xs"
-                onClick={() => setCountyClickMode("add")}
-              >
-                Add counties
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={countyClickMode === "replace" ? "default" : "ghost"}
-                className="h-8 rounded-sm px-2.5 text-xs"
-                onClick={() => setCountyClickMode("replace")}
-              >
-                Replace
-              </Button>
-            </div>
-            <Button
-              type="button"
-              variant={boxSelectMode ? "default" : "outline"}
-              onClick={() => setBoxSelectMode((on) => !on)}
-            >
-              {boxSelectMode ? "Box select on" : "Box select"}
-            </Button>
-            <div className="space-y-1">
-              <Label className="text-xs">Assign to</Label>
-              <Select
-                value={assignTerritoryId}
-                onValueChange={(v) => {
-                  setAssignTerritoryId(v);
-                  setAssignError(null);
-                }}
-              >
-                <SelectTrigger className="w-72">
-                  <SelectValue placeholder="Select territory" />
-                </SelectTrigger>
-                <SelectContent>
-                  {territories.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name} · {t.shippingMethod.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              onClick={handleAssign}
-              disabled={!assignTerritoryId || selectedFips.size === 0 || saving}
-            >
-              Assign ({selectedFips.size})
-            </Button>
-            <Button variant="outline" onClick={() => setSelectedFips(new Set())}>
-              Clear
-            </Button>
-            <Button
-              variant={zipPanelOpen ? "default" : "outline"}
-              onClick={() => {
-                setZipPanelOpen((o) => !o);
-                setZipMessage(null);
-              }}
-            >
-              ZIP overrides
-            </Button>
-            <Button
-              variant={polygonMode ? "default" : "outline"}
-              onClick={() => setPolygonMode((p) => !p)}
-            >
-              {polygonMode ? "Exit Draw" : "Draw Polygon"}
-            </Button>
-          </div>
-          {(assignError || zipMessage) && (
-            <p
-              className={`text-sm max-w-xl text-right ${assignError ? "text-destructive" : "text-muted-foreground"}`}
-            >
-              {assignError ?? zipMessage}
-            </p>
-          )}
-        </div>
-        {(polygonMode || boxSelectMode) && (
-          <Badge variant="secondary" className="ml-4">
-            {boxSelectMode
-              ? "Drag on the map to select counties in a box"
-              : "Draw a polygon on the map to select counties inside it"}
-          </Badge>
-        )}
-      </div>
+      <MapEditorToolbar
+        countyClickMode={countyClickMode}
+        onCountyClickModeChange={setCountyClickMode}
+        boxSelectMode={boxSelectMode}
+        onBoxSelectModeChange={setBoxSelectMode}
+        polygonMode={polygonMode}
+        onPolygonModeChange={setPolygonMode}
+        selectedCount={selectedFips.size}
+        onClearSelection={() => setSelectedFips(new Set())}
+        statePicker={statePicker}
+        onStatePickerChange={setStatePicker}
+        onReplaceWithStates={() => selectStateCounties("replace")}
+        onAddStates={() => selectStateCounties("add")}
+        territories={territories}
+        assignTerritoryId={assignTerritoryId}
+        onAssignTerritoryIdChange={(id) => {
+          setAssignTerritoryId(id);
+          setAssignError(null);
+        }}
+        onAssignCounties={handleAssign}
+        saving={saving}
+        zipPanelOpen={zipPanelOpen}
+        onZipPanelOpenChange={(open) => {
+          setZipPanelOpen(open);
+          if (!open) setZipMessage(null);
+        }}
+        canUndo={canUndo}
+        onUndo={handleUndo}
+        assignError={assignError}
+        zipMessage={zipMessage}
+      />
 
       <div className="flex-1 relative">
         {!isLoading && (
@@ -375,14 +277,6 @@ export default function MapEditorPage() {
             onClear={() => setSelectedFips(new Set())}
             onAssign={handleAssign}
             assignDisabled={!assignTerritoryId || selectedFips.size === 0}
-            saving={saving}
-          />
-          <UndoRedoToolbar
-            canUndo={canUndo}
-            canRedo={canRedo}
-            onUndo={handleUndo}
-            onRedo={() => {}}
-            selectedCount={selectedFips.size}
             saving={saving}
           />
         </div>

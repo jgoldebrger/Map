@@ -146,15 +146,20 @@ export function ZipAssignPanel({
     [rows, selectedZips],
   );
 
+  const selectedWithoutOverride = useMemo(
+    () => rows.filter((r) => selectedZips.has(r.zip) && !r.override).map((r) => r.zip),
+    [rows, selectedZips],
+  );
+
   const handleAssign = async () => {
-    if (!assignTerritoryId || selectedZips.size === 0) return;
-    const count = selectedZips.size;
+    if (!assignTerritoryId || selectedWithoutOverride.length === 0) return;
+    const count = selectedWithoutOverride.length;
     setSaving(true);
     onMessage?.(null);
     const res = await fetch("/api/zipcodes/assignments", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ zips: [...selectedZips], territoryId: assignTerritoryId }),
+      body: JSON.stringify({ zips: selectedWithoutOverride, territoryId: assignTerritoryId }),
     });
     setSaving(false);
     if (!res.ok) {
@@ -169,8 +174,8 @@ export function ZipAssignPanel({
   };
 
   const handleClearOverrides = async () => {
-    const zips = selectedWithOverride.length > 0 ? selectedWithOverride : [...selectedZips];
-    if (zips.length === 0) return;
+    if (selectedWithOverride.length === 0) return;
+    const zips = selectedWithOverride;
     setSaving(true);
     onMessage?.(null);
     const res = await fetch("/api/zipcodes/assignments", {
@@ -365,20 +370,34 @@ export function ZipAssignPanel({
         </p>
         <Button
           className="w-full"
-          disabled={!assignTerritoryId || selectedZips.size === 0 || saving}
+          disabled={
+            !assignTerritoryId ||
+            selectedWithoutOverride.length === 0 ||
+            saving ||
+            selectedWithOverride.length > 0
+          }
           onClick={handleAssign}
         >
-          Assign ZIP override ({selectedZips.size})
+          Assign ZIP override ({selectedWithoutOverride.length})
         </Button>
         <Button
           variant="outline"
           className="w-full"
-          disabled={selectedWithOverride.length === 0 && selectedZips.size === 0}
+          disabled={
+            selectedWithOverride.length === 0 ||
+            saving ||
+            selectedWithoutOverride.length > 0
+          }
           onClick={handleClearOverrides}
         >
-          Clear override
-          {selectedWithOverride.length > 0 ? ` (${selectedWithOverride.length})` : ""}
+          Clear override ({selectedWithOverride.length})
         </Button>
+        {selectedWithOverride.length > 0 && selectedWithoutOverride.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Select only ZIPs with overrides to clear, or only ZIPs without overrides to assign —
+            not both at once.
+          </p>
+        )}
         {!assignTerritoryId && (
           <p className="text-xs text-amber-600">Select a territory in the toolbar first.</p>
         )}
