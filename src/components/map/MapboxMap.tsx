@@ -92,6 +92,57 @@ function clearZipOverrideLayers(map: mapboxgl.Map) {
   }
 }
 
+function ensureStateLabelLayers(
+  map: mapboxgl.Map,
+  labels: GeoJSON.FeatureCollection | null | undefined,
+) {
+  const sourceId = "state-labels";
+  const layerId = "state-labels-text";
+
+  if (!labels?.features?.length) {
+    if (map.getLayer(layerId)) map.removeLayer(layerId);
+    if (map.getSource(sourceId)) map.removeSource(sourceId);
+    return;
+  }
+
+  const existing = map.getSource(sourceId);
+  if (existing && "setData" in existing) {
+    existing.setData(labels);
+  } else if (!existing) {
+    map.addSource(sourceId, { type: "geojson", data: labels });
+  }
+
+  if (!map.getLayer(layerId)) {
+    map.addLayer({
+      id: layerId,
+      type: "symbol",
+      source: sourceId,
+      layout: {
+        "text-field": ["get", "code"],
+        "text-size": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          4,
+          10,
+          6,
+          12,
+          8,
+          14,
+        ],
+        "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+        "text-allow-overlap": true,
+        "text-ignore-placement": true,
+      },
+      paint: {
+        "text-color": "#000000",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1,
+      },
+    });
+  }
+}
+
 async function updateCountyDisplay(
   map: mapboxgl.Map,
   zipGeo: ZipOverrideGeoJson | null | undefined,
@@ -128,6 +179,8 @@ export type MapboxMapProps = {
   className?: string;
   /** Required for canvas capture / PDF export */
   preserveDrawingBuffer?: boolean;
+  /** USPS state code labels (e.g. FL, NY) for PDF export. */
+  stateLabelsGeoJson?: GeoJSON.FeatureCollection | null;
 };
 
 const US_BOUNDS: mapboxgl.LngLatBoundsLike = [
@@ -242,6 +295,7 @@ export function MapboxMap({
   onMapReady,
   className,
   preserveDrawingBuffer = false,
+  stateLabelsGeoJson,
 }: MapboxMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -255,6 +309,11 @@ export function MapboxMap({
 
   const zipGeoRef = useRef(zipOverrideGeoJson);
   zipGeoRef.current = zipOverrideGeoJson;
+
+  const stateLabelsRef = useRef(stateLabelsGeoJson);
+  stateLabelsRef.current = stateLabelsGeoJson;
+  const stateLabelRevision =
+    stateLabelsGeoJson?.features?.map((f) => f.properties?.code).join(",") ?? "";
 
   const onCountyClickRef = useRef(onCountyClick);
   onCountyClickRef.current = onCountyClick;
@@ -303,6 +362,7 @@ export function MapboxMap({
             zipGeoRef.current.hit,
           );
         }
+        ensureStateLabelLayers(map, stateLabelsRef.current);
         onMapReadyRef.current?.(map);
       })();
     };
@@ -452,6 +512,7 @@ export function MapboxMap({
         } else {
           clearZipOverrideLayers(map);
         }
+        ensureStateLabelLayers(map, stateLabelsGeoJson ?? stateLabelsRef.current);
         map.triggerRepaint();
       })();
     };
@@ -460,7 +521,7 @@ export function MapboxMap({
     if (!map.isStyleLoaded()) {
       map.once("load", applyColors);
     }
-  }, [colorRevision, zipRevision, zipOverrideGeoJson, dimUnmatchedCounties]);
+  }, [colorRevision, zipRevision, zipOverrideGeoJson, dimUnmatchedCounties, stateLabelRevision]);
 
   useEffect(() => {
     const map = mapRef.current;

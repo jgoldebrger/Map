@@ -25,6 +25,7 @@ import {
   fitMapToAssignmentCounties,
   uniqueTerritoriesFromAssignments,
 } from "@/lib/map/export-map-pdf";
+import { buildStateLabelGeoJson } from "@/lib/map/state-label-geo";
 
 const MapboxMap = dynamic(
   () => import("@/components/map/MapboxMap").then((m) => m.MapboxMap),
@@ -67,6 +68,11 @@ export function MapExportContent() {
   const territories = useMemo(
     () => uniqueTerritoriesFromAssignments(displayAssignments),
     [displayAssignments],
+  );
+
+  const stateLabelsGeoJson = useMemo(
+    () => buildStateLabelGeoJson(countyFeatures, Object.keys(displayAssignments)),
+    [countyFeatures, displayAssignments],
   );
 
   const defaultTitle = useMemo(
@@ -136,6 +142,7 @@ export function MapExportContent() {
           <MapboxMap
             assignments={displayAssignments}
             zipOverrideGeoJson={displayZipOverrides ?? null}
+            stateLabelsGeoJson={stateLabelsGeoJson}
             dimUnmatchedCounties={methodFilterIds.size > 0}
             preserveDrawingBuffer
             mode="view"
