@@ -5,6 +5,7 @@ import { Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { ScheduleAnswer } from "@/lib/shipping/schedule";
+import { USPS_STATE_NAMES } from "@/lib/us-states";
 import type { AskMessage } from "@/lib/validators/ask";
 
 type ChatMessage = AskMessage & { sources?: ScheduleAnswer[] };
@@ -12,7 +13,7 @@ type ChatMessage = AskMessage & { sources?: ScheduleAnswer[] };
 export const EXAMPLE_PROMPTS = [
   "Next ship date for Bergen County, NJ",
   "When does ZIP 60601 ship?",
-  "Ship schedule for Cook County, IL",
+  "What territories ship in Florida?",
 ];
 
 type Props = {
@@ -164,7 +165,9 @@ function SourceCard({ source }: { source: ScheduleAnswer }) {
     ? `ZIP ${source.zip}${source.city ? ` (${source.city})` : ""}`
     : source.county && source.state
       ? `${source.county}, ${source.state}`
-      : source.territory;
+      : source.state
+        ? `${USPS_STATE_NAMES[source.state] ?? source.state} (${source.state})`
+        : source.territory;
 
   return (
     <div className="rounded border bg-muted/40 p-2 text-xs space-y-1">

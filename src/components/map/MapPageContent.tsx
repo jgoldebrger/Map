@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
@@ -9,8 +9,14 @@ import { MapLegend } from "@/components/map/MapLegend";
 import { CountyPanel } from "@/components/map/CountyPanel";
 import { ZipDetailPanel } from "@/components/map/ZipDetailPanel";
 import { MapSearch } from "@/components/map/MapSearch";
+import { ShippingMethodFilter } from "@/components/map/ShippingMethodFilter";
 import { useTerritoryAssignments } from "@/hooks/useTerritoryAssignments";
 import { useZipOverrideGeoJson } from "@/hooks/useZipOverrideGeoJson";
+import {
+  filterAssignmentsByShippingMethod,
+  filterZipOverridesByShippingMethod,
+  shippingMethodsFromAssignments,
+} from "@/lib/queries/assignments";
 import { useCountyDetail, normalizeFips } from "@/hooks/useCountyDetail";
 import { useZipLookup } from "@/hooks/useZipLookup";
 import { AskMapsFloat } from "@/components/lookup/AskMapsFloat";
@@ -30,10 +36,26 @@ type MapSelection =
 export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant }) {
   const { data: assignments = {}, isLoading } = useTerritoryAssignments();
   const { data: zipOverrideGeoJson } = useZipOverrideGeoJson();
+  const [methodFilterId, setMethodFilterId] = useState<string | null>(null);
   const [selection, setSelection] = useState<MapSelection>(null);
   const [hoverInfo, setHoverInfo] = useState<string | null>(null);
   const [zipHoverInfo, setZipHoverInfo] = useState<{ zip: string; territoryName: string } | null>(
     null,
+  );
+
+  const shippingMethods = useMemo(
+    () => shippingMethodsFromAssignments(assignments),
+    [assignments],
+  );
+
+  const displayAssignments = useMemo(
+    () => filterAssignmentsByShippingMethod(assignments, methodFilterId),
+    [assignments, methodFilterId],
+  );
+
+  const displayZipOverrides = useMemo(
+    () => filterZipOverridesByShippingMethod(zipOverrideGeoJson, methodFilterId),
+    [zipOverrideGeoJson, methodFilterId],
   );
 
   const selectedFips = selection?.kind === "county" ? selection.fips : null;
@@ -91,8 +113,9 @@ export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant 
           </div>
         ) : (
           <MapboxMap
-            assignments={assignments}
-            zipOverrideGeoJson={zipOverrideGeoJson ?? null}
+            assignments={displayAssignments}
+            zipOverrideGeoJson={displayZipOverrides ?? null}
+            dimUnmatchedCounties={methodFilterId != null}
             mode="view"
             onCountyClick={handleCountyClick}
             onZipClick={handleZipClick}
@@ -103,6 +126,11 @@ export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant 
         )}
 
         <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+          <ShippingMethodFilter
+            methods={shippingMethods}
+            value={methodFilterId}
+            onChange={setMethodFilterId}
+          />
           <MapSearch />
           {zipHoverInfo ? (
             <div className="rounded-md border bg-white px-3 py-2 text-sm shadow">
@@ -112,16 +140,16 @@ export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant 
             </div>
           ) : (
             hoverInfo &&
-            assignments[hoverInfo] && (
+            displayAssignments[hoverInfo] && (
               <div className="rounded-md border bg-white px-3 py-2 text-sm shadow">
-                <span className="font-medium">{assignments[hoverInfo].territoryName}</span>
+                <span className="font-medium">{displayAssignments[hoverInfo].territoryName}</span>
               </div>
             )
           )}
         </div>
 
         <MapLegend
-          assignments={assignments}
+          assignments={displayAssignments}
           className={
             variant === "embed"
               ? "absolute bottom-4 left-4 z-10 w-48 text-xs"

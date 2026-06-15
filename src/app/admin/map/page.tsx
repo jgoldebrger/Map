@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useTerritoryAssignments, usePatchAssignments, useRevertAssignments } from "@/hooks/useTerritoryAssignments";
 import { useZipOverrideGeoJson } from "@/hooks/useZipOverrideGeoJson";
 import { useMapEditorHistory } from "@/hooks/useMapEditorHistory";
 import { MapLegend } from "@/components/map/MapLegend";
+import { ShippingMethodFilter } from "@/components/map/ShippingMethodFilter";
 import type mapboxgl from "mapbox-gl";
 import { CountySelectionPanel } from "@/components/map/editor/CountySelectionPanel";
 import { MapEditorToolbar } from "@/components/map/editor/MapEditorToolbar";
@@ -14,6 +15,11 @@ import { ZipAssignPanel } from "@/components/map/editor/ZipAssignPanel";
 import type { CountyClickModifiers } from "@/components/map/MapboxMap";
 import { boundsForFeatures, countyFipsInStates, featuresInStates } from "@/lib/county-geo";
 import type { AssignmentMap } from "@/lib/queries/assignments";
+import {
+  filterAssignmentsByShippingMethod,
+  filterZipOverridesByShippingMethod,
+  shippingMethodsFromAssignments,
+} from "@/lib/queries/assignments";
 import { AskMapsFloat } from "@/components/lookup/AskMapsFloat";
 
 const MapboxMap = dynamic(
@@ -54,6 +60,22 @@ export default function MapEditorPage() {
   const [zipMessage, setZipMessage] = useState<string | null>(null);
   const [countyClickMode, setCountyClickMode] = useState<CountyClickMode>("add");
   const [boxSelectMode, setBoxSelectMode] = useState(false);
+  const [methodFilterId, setMethodFilterId] = useState<string | null>(null);
+
+  const shippingMethods = useMemo(
+    () => shippingMethodsFromAssignments(assignments),
+    [assignments],
+  );
+
+  const displayAssignments = useMemo(
+    () => filterAssignmentsByShippingMethod(assignments, methodFilterId),
+    [assignments, methodFilterId],
+  );
+
+  const displayZipOverrides = useMemo(
+    () => filterZipOverridesByShippingMethod(zipOverrideGeoJson, methodFilterId),
+    [zipOverrideGeoJson, methodFilterId],
+  );
 
   useEffect(() => {
     fetch("/geo/us-counties.geojson")
@@ -249,8 +271,9 @@ export default function MapEditorPage() {
       <div className="flex-1 relative">
         {!isLoading && (
           <MapboxMap
-            assignments={assignments}
-            zipOverrideGeoJson={zipOverrideGeoJson ?? null}
+            assignments={displayAssignments}
+            zipOverrideGeoJson={displayZipOverrides ?? null}
+            dimUnmatchedCounties={methodFilterId != null}
             mode="edit"
             selectedFips={selectedFips}
             boxSelectEnabled={boxSelectMode}
@@ -267,6 +290,11 @@ export default function MapEditorPage() {
           onSelect={applyFipsSelection}
         />
         <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+          <ShippingMethodFilter
+            methods={shippingMethods}
+            value={methodFilterId}
+            onChange={setMethodFilterId}
+          />
           <CountySelectionPanel
             selectedFips={selectedFips}
             countyFeatures={countyFeatures}
@@ -280,7 +308,7 @@ export default function MapEditorPage() {
             saving={saving}
           />
         </div>
-        <MapLegend assignments={assignments} className="absolute bottom-4 right-4 z-10 w-52" />
+        <MapLegend assignments={displayAssignments} className="absolute bottom-4 right-4 z-10 w-52" />
         {zipPanelOpen && (
           <ZipAssignPanel
             assignTerritoryId={assignTerritoryId}

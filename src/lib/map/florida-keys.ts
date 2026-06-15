@@ -27,6 +27,7 @@ export function isFloridaKeysZip(zip: string | null | undefined): boolean {
 export type KeysOverrideStyle = {
   color: string;
   territoryName: string;
+  shippingMethodId: string;
 };
 
 export type MonroeSplit = {
@@ -101,6 +102,7 @@ export function resolveKeysOverrideStyle(
     territoryName: sameTerritory
       ? first.territoryName
       : `${first.territoryName} (+${keysOverrides.length - 1} more)`,
+    shippingMethodId: first.shippingMethodId,
   };
 }
 

@@ -36,6 +36,7 @@ export async function buildMapOverrideGeoJson(
           fips: MONROE_FIPS,
           color: style.color,
           territoryName: style.territoryName,
+          shippingMethodId: style.shippingMethodId,
         },
         geometry: region.geometry,
       });

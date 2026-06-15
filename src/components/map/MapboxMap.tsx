@@ -115,6 +115,8 @@ export type MapboxMapProps = {
   assignments: AssignmentMap;
   zipOverrideGeoJson?: ZipOverrideGeoJson | null;
   mode?: MapMode;
+  /** When true, counties outside `assignments` are drawn very faint. Use with a filtered assignment set. */
+  dimUnmatchedCounties?: boolean;
   selectedFips?: Set<string>;
   boxSelectEnabled?: boolean;
   onCountyClick?: (fips: string, modifiers?: CountyClickModifiers) => void;
@@ -145,15 +147,37 @@ function buildColorExpression(assignments: AssignmentMap): mapboxgl.Expression {
   return matchExpr as mapboxgl.Expression;
 }
 
+function buildOpacityExpression(
+  assignments: AssignmentMap,
+  dimUnmatched: boolean,
+): number | mapboxgl.Expression {
+  if (!dimUnmatched) return 0.7;
+
+  const fipsList = Object.keys(assignments);
+  if (fipsList.length === 0) return 0.06;
+
+  return [
+    "case",
+    ["in", ["get", "GEOID"], ["literal", fipsList]],
+    0.75,
+    0.06,
+  ] as mapboxgl.Expression;
+}
+
 function fipsFromFeature(props: GeoJSON.GeoJsonProperties | null | undefined): string | undefined {
   const raw = props?.GEOID ?? props?.geoid;
   if (raw == null || raw === "") return undefined;
   return String(raw).padStart(5, "0").slice(-5);
 }
 
-function ensureCountyLayers(map: mapboxgl.Map, assignments: AssignmentMap) {
+function ensureCountyLayers(
+  map: mapboxgl.Map,
+  assignments: AssignmentMap,
+  dimUnmatched = false,
+) {
   const sourceId = "counties";
   const layerId = "counties-fill";
+  const fillOpacity = buildOpacityExpression(assignments, dimUnmatched);
 
   if (!map.getSource(sourceId)) {
     map.addSource(sourceId, {
@@ -170,7 +194,7 @@ function ensureCountyLayers(map: mapboxgl.Map, assignments: AssignmentMap) {
       source: sourceId,
       paint: {
         "fill-color": buildColorExpression(assignments),
-        "fill-opacity": 0.7,
+        "fill-opacity": fillOpacity,
         "fill-outline-color": "#64748b",
       },
     });
@@ -197,6 +221,7 @@ function ensureCountyLayers(map: mapboxgl.Map, assignments: AssignmentMap) {
     });
   } else {
     map.setPaintProperty(layerId, "fill-color", buildColorExpression(assignments));
+    map.setPaintProperty(layerId, "fill-opacity", fillOpacity);
   }
 }
 
@@ -204,6 +229,7 @@ export function MapboxMap({
   assignments,
   zipOverrideGeoJson,
   mode = "view",
+  dimUnmatchedCounties = false,
   selectedFips,
   boxSelectEnabled = false,
   onCountyClick,
@@ -219,6 +245,8 @@ export function MapboxMap({
 
   const assignmentsRef = useRef(assignments);
   assignmentsRef.current = assignments;
+  const dimUnmatchedRef = useRef(dimUnmatchedCounties);
+  dimUnmatchedRef.current = dimUnmatchedCounties;
   const colorRevision = assignmentColorRevision(assignments);
   const zipRevision = zipOverrideGeoRevision(zipOverrideGeoJson);
 
@@ -261,7 +289,7 @@ export function MapboxMap({
     map.addControl(new mapboxgl.NavigationControl(), "top-right");
 
     const handleLoad = () => {
-      ensureCountyLayers(map, assignmentsRef.current);
+      ensureCountyLayers(map, assignmentsRef.current, dimUnmatchedRef.current);
       void (async () => {
         await updateCountyDisplay(map, zipGeoRef.current);
         if (zipGeoRef.current?.display?.features?.length) {
@@ -410,7 +438,7 @@ export function MapboxMap({
 
     const applyColors = () => {
       if (!map.isStyleLoaded()) return;
-      ensureCountyLayers(map, assignmentsRef.current);
+      ensureCountyLayers(map, assignmentsRef.current, dimUnmatchedRef.current);
       const zipGeo = zipOverrideGeoJson ?? zipGeoRef.current;
 
       void (async () => {
@@ -428,7 +456,7 @@ export function MapboxMap({
     if (!map.isStyleLoaded()) {
       map.once("load", applyColors);
     }
-  }, [colorRevision, zipRevision, zipOverrideGeoJson]);
+  }, [colorRevision, zipRevision, zipOverrideGeoJson, dimUnmatchedCounties]);
 
   useEffect(() => {
     const map = mapRef.current;

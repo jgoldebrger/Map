@@ -6,6 +6,7 @@ export type ZipOverrideRow = {
   fips: string;
   color: string;
   territoryName: string;
+  shippingMethodId: string;
 };
 
 const stateCache = new Map<string, GeoCollection>();
@@ -36,7 +37,7 @@ export async function buildZipOverrideGeoJson(
   const byState = new Map<string, Set<string>>();
   const metaByZip = new Map<
     string,
-    { fips: string; color: string; territoryName: string }
+    { fips: string; color: string; territoryName: string; shippingMethodId: string }
   >();
 
   for (const row of overrides) {
@@ -49,6 +50,7 @@ export async function buildZipOverrideGeoJson(
       fips,
       color: row.color,
       territoryName: row.territoryName,
+      shippingMethodId: row.shippingMethodId,
     });
   }
 
@@ -71,6 +73,7 @@ export async function buildZipOverrideGeoJson(
             fips: meta.fips,
             color: meta.color,
             territoryName: meta.territoryName,
+            shippingMethodId: meta.shippingMethodId,
           },
           geometry: feature.geometry,
         });

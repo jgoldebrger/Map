@@ -73,6 +73,53 @@ export function revertAssignmentMap(
 }
 
 /** Stable key so Mapbox repaints when territory colors change on existing FIPS. */
+export function shippingMethodsFromAssignments(
+  assignments: AssignmentMap,
+): { id: string; name: string }[] {
+  const methods = new Map<string, string>();
+  for (const entry of Object.values(assignments)) {
+    if (entry.shippingMethodId) {
+      methods.set(entry.shippingMethodId, entry.shippingMethod);
+    }
+  }
+  return [...methods.entries()]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export function filterAssignmentsByShippingMethod(
+  assignments: AssignmentMap,
+  methodId: string | null,
+): AssignmentMap {
+  if (!methodId) return assignments;
+  return Object.fromEntries(
+    Object.entries(assignments).filter(([, entry]) => entry.shippingMethodId === methodId),
+  );
+}
+
+export function filterZipOverridesByShippingMethod<
+  T extends {
+    display: GeoJSON.FeatureCollection;
+    hit: GeoJSON.FeatureCollection;
+  },
+>(data: T | null | undefined, methodId: string | null): T | null | undefined {
+  if (!data || !methodId) return data;
+
+  const keep = (feature: GeoJSON.Feature) => feature.properties?.shippingMethodId === methodId;
+
+  return {
+    ...data,
+    display: {
+      ...data.display,
+      features: data.display.features.filter(keep),
+    },
+    hit: {
+      ...data.hit,
+      features: data.hit.features.filter(keep),
+    },
+  };
+}
+
 export function assignmentColorRevision(assignments: AssignmentMap): string {
   return Object.entries(assignments)
     .map(([fips, a]) => `${fips}:${a.territoryId}:${a.color}`)

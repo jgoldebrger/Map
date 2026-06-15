@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { resolveUspsStateCode } from "@/lib/us-states";
 
 export type LookupResult = {
   territory: string;
@@ -154,8 +155,8 @@ export async function lookupByTerritory(name: string): Promise<LookupResult | nu
 }
 
 export async function lookupByState(state: string): Promise<LookupResult[]> {
-  const st = state.trim().toUpperCase().slice(0, 2);
-  if (st.length !== 2) return [];
+  const st = resolveUspsStateCode(state);
+  if (!st) return [];
 
   const assignments = await prisma.countyAssignment.findMany({
     where: { county: { state: st } },

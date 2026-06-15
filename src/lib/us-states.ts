@@ -129,3 +129,25 @@ export const US_STATES = Object.entries(FIPS_TO_USPS)
     name: USPS_STATE_NAMES[code] ?? code,
   }))
   .sort((a, b) => a.code.localeCompare(b.code));
+
+/** Resolve a state name or USPS code (e.g. "Florida", "fl", "FL") to a 2-letter code. */
+export function resolveUspsStateCode(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  const upper = trimmed.toUpperCase();
+  if (upper.length === 2 && USPS_STATE_NAMES[upper]) {
+    return upper;
+  }
+
+  const lower = trimmed.toLowerCase();
+  const exact = Object.entries(USPS_STATE_NAMES).find(([, name]) => name.toLowerCase() === lower);
+  if (exact) return exact[0];
+
+  return null;
+}
+
+export function messageMentionsUsState(text: string): boolean {
+  const lower = text.toLowerCase();
+  return Object.values(USPS_STATE_NAMES).some((name) => lower.includes(name.toLowerCase()));
+}

@@ -5,7 +5,7 @@ export async function GET() {
   const rows = await prisma.zipCodeAssignment.findMany({
     include: {
       zipCode: { select: { zip: true, county: { select: { state: true, fipsCode: true } } } },
-      territory: { select: { name: true, color: true } },
+      territory: { select: { name: true, color: true, shippingMethodId: true } },
     },
   });
 
@@ -15,6 +15,7 @@ export async function GET() {
     fips: r.zipCode.county.fipsCode,
     color: r.territory.color,
     territoryName: r.territory.name,
+    shippingMethodId: r.territory.shippingMethodId,
   }));
 
   return NextResponse.json(
