@@ -89,11 +89,11 @@ export function shippingMethodsFromAssignments(
 
 export function filterAssignmentsByShippingMethod(
   assignments: AssignmentMap,
-  methodId: string | null,
+  methodIds: ReadonlySet<string>,
 ): AssignmentMap {
-  if (!methodId) return assignments;
+  if (methodIds.size === 0) return assignments;
   return Object.fromEntries(
-    Object.entries(assignments).filter(([, entry]) => entry.shippingMethodId === methodId),
+    Object.entries(assignments).filter(([, entry]) => methodIds.has(entry.shippingMethodId)),
   );
 }
 
@@ -102,10 +102,11 @@ export function filterZipOverridesByShippingMethod<
     display: GeoJSON.FeatureCollection;
     hit: GeoJSON.FeatureCollection;
   },
->(data: T | null | undefined, methodId: string | null): T | null | undefined {
-  if (!data || !methodId) return data;
+>(data: T | null | undefined, methodIds: ReadonlySet<string>): T | null | undefined {
+  if (!data || methodIds.size === 0) return data;
 
-  const keep = (feature: GeoJSON.Feature) => feature.properties?.shippingMethodId === methodId;
+  const keep = (feature: GeoJSON.Feature) =>
+    methodIds.has(String(feature.properties?.shippingMethodId ?? ""));
 
   return {
     ...data,

@@ -60,7 +60,7 @@ export default function MapEditorPage() {
   const [zipMessage, setZipMessage] = useState<string | null>(null);
   const [countyClickMode, setCountyClickMode] = useState<CountyClickMode>("add");
   const [boxSelectMode, setBoxSelectMode] = useState(false);
-  const [methodFilterId, setMethodFilterId] = useState<string | null>(null);
+  const [methodFilterIds, setMethodFilterIds] = useState<Set<string>>(new Set());
 
   const shippingMethods = useMemo(
     () => shippingMethodsFromAssignments(assignments),
@@ -68,13 +68,13 @@ export default function MapEditorPage() {
   );
 
   const displayAssignments = useMemo(
-    () => filterAssignmentsByShippingMethod(assignments, methodFilterId),
-    [assignments, methodFilterId],
+    () => filterAssignmentsByShippingMethod(assignments, methodFilterIds),
+    [assignments, methodFilterIds],
   );
 
   const displayZipOverrides = useMemo(
-    () => filterZipOverridesByShippingMethod(zipOverrideGeoJson, methodFilterId),
-    [zipOverrideGeoJson, methodFilterId],
+    () => filterZipOverridesByShippingMethod(zipOverrideGeoJson, methodFilterIds),
+    [zipOverrideGeoJson, methodFilterIds],
   );
 
   useEffect(() => {
@@ -273,7 +273,7 @@ export default function MapEditorPage() {
           <MapboxMap
             assignments={displayAssignments}
             zipOverrideGeoJson={displayZipOverrides ?? null}
-            dimUnmatchedCounties={methodFilterId != null}
+            dimUnmatchedCounties={methodFilterIds.size > 0}
             mode="edit"
             selectedFips={selectedFips}
             boxSelectEnabled={boxSelectMode}
@@ -292,8 +292,8 @@ export default function MapEditorPage() {
         <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
           <ShippingMethodFilter
             methods={shippingMethods}
-            value={methodFilterId}
-            onChange={setMethodFilterId}
+            selected={methodFilterIds}
+            onChange={setMethodFilterIds}
           />
           <CountySelectionPanel
             selectedFips={selectedFips}

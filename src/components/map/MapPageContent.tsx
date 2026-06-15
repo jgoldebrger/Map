@@ -36,7 +36,7 @@ type MapSelection =
 export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant }) {
   const { data: assignments = {}, isLoading } = useTerritoryAssignments();
   const { data: zipOverrideGeoJson } = useZipOverrideGeoJson();
-  const [methodFilterId, setMethodFilterId] = useState<string | null>(null);
+  const [methodFilterIds, setMethodFilterIds] = useState<Set<string>>(new Set());
   const [selection, setSelection] = useState<MapSelection>(null);
   const [hoverInfo, setHoverInfo] = useState<string | null>(null);
   const [zipHoverInfo, setZipHoverInfo] = useState<{ zip: string; territoryName: string } | null>(
@@ -49,13 +49,13 @@ export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant 
   );
 
   const displayAssignments = useMemo(
-    () => filterAssignmentsByShippingMethod(assignments, methodFilterId),
-    [assignments, methodFilterId],
+    () => filterAssignmentsByShippingMethod(assignments, methodFilterIds),
+    [assignments, methodFilterIds],
   );
 
   const displayZipOverrides = useMemo(
-    () => filterZipOverridesByShippingMethod(zipOverrideGeoJson, methodFilterId),
-    [zipOverrideGeoJson, methodFilterId],
+    () => filterZipOverridesByShippingMethod(zipOverrideGeoJson, methodFilterIds),
+    [zipOverrideGeoJson, methodFilterIds],
   );
 
   const selectedFips = selection?.kind === "county" ? selection.fips : null;
@@ -115,7 +115,7 @@ export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant 
           <MapboxMap
             assignments={displayAssignments}
             zipOverrideGeoJson={displayZipOverrides ?? null}
-            dimUnmatchedCounties={methodFilterId != null}
+            dimUnmatchedCounties={methodFilterIds.size > 0}
             mode="view"
             onCountyClick={handleCountyClick}
             onZipClick={handleZipClick}
@@ -128,8 +128,8 @@ export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant 
         <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
           <ShippingMethodFilter
             methods={shippingMethods}
-            value={methodFilterId}
-            onChange={setMethodFilterId}
+            selected={methodFilterIds}
+            onChange={setMethodFilterIds}
           />
           <MapSearch />
           {zipHoverInfo ? (
