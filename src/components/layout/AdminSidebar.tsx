@@ -13,6 +13,7 @@ import {
   Truck,
   LogOut,
   Code2,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOut } from "next-auth/react";
@@ -30,6 +31,7 @@ const allLinks: {
   { href: "/admin/shipping-methods", label: "Shipping Methods", icon: Truck },
   { href: "/admin/territories", label: "Territories", icon: Layers },
   { href: "/admin/live-map", label: "Live Map", icon: Globe },
+  { href: "/admin/export", label: "Map Export", icon: Download },
   {
     href: "/admin/map",
     label: "Map Editor",

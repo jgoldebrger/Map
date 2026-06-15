@@ -126,6 +126,8 @@ export type MapboxMapProps = {
   onBoxSelect?: (fips: string[]) => void;
   onMapReady?: (map: mapboxgl.Map | null) => void;
   className?: string;
+  /** Required for canvas capture / PDF export */
+  preserveDrawingBuffer?: boolean;
 };
 
 const US_BOUNDS: mapboxgl.LngLatBoundsLike = [
@@ -239,6 +241,7 @@ export function MapboxMap({
   onBoxSelect,
   onMapReady,
   className,
+  preserveDrawingBuffer = false,
 }: MapboxMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -284,6 +287,7 @@ export function MapboxMap({
       center: [-98, 39],
       zoom: 3.5,
       maxBounds: US_BOUNDS,
+      preserveDrawingBuffer,
     });
 
     map.addControl(new mapboxgl.NavigationControl(), "top-right");

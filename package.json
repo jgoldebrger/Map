@@ -55,6 +55,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.0.4",
     "date-fns": "^4.1.0",
+    "jspdf": "^4.2.1",
     "langchain": "^1.4.4",
     "lucide-react": "^0.469.0",
     "mapbox-gl": "^3.8.0",
