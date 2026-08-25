@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,9 +38,12 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle>SIP Admin</CardTitle>
+      <Card className="w-full max-w-md rounded-xl shadow-xl border-0 shadow-slate-200/80">
+        <CardHeader className="text-center space-y-3 pb-2">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <Truck className="h-6 w-6" />
+          </div>
+          <CardTitle className="text-xl">SIP Admin</CardTitle>
           <CardDescription>Fabuwood Shipping Intelligence Platform</CardDescription>
         </CardHeader>
         <CardContent>

@@ -70,7 +70,8 @@ export function CsvImporter() {
   };
 
   return (
-    <div className="space-y-6">
+    <Card className="rounded-xl shadow-sm">
+      <CardContent className="space-y-6 p-6">
       <div className="space-y-2">
         <Label>Import type</Label>
         <Select value={type} onValueChange={(v) => setType(v as ImportType)}>
@@ -110,7 +111,7 @@ export function CsvImporter() {
       </div>
 
       {errors.length > 0 && (
-        <Card className="border-destructive">
+        <Card className="rounded-xl border-destructive shadow-sm">
           <CardHeader>
             <CardTitle className="text-sm text-destructive">Validation Errors</CardTitle>
           </CardHeader>
@@ -127,7 +128,7 @@ export function CsvImporter() {
       )}
 
       {preview !== null && (
-        <Card>
+        <Card className="rounded-xl shadow-sm">
           <CardHeader>
             <CardTitle className="text-sm">Preview (first 10 rows)</CardTitle>
           </CardHeader>
@@ -137,7 +138,8 @@ export function CsvImporter() {
         </Card>
       )}
 
-      {result && <p className="text-sm text-green-600">{result}</p>}
-    </div>
+      {result && <p className="text-sm font-medium text-emerald-700">{result}</p>}
+      </CardContent>
+    </Card>
   );
 }

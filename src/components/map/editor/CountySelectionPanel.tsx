@@ -34,7 +34,7 @@ export function CountySelectionPanel({
   });
 
   return (
-    <div className="absolute top-4 left-4 z-20 flex max-h-[min(420px,50vh)] w-72 flex-col rounded-lg border bg-white shadow-lg">
+    <div className="glass-panel z-20 flex max-h-[min(420px,50vh)] w-80 flex-col rounded-xl custom-scrollbar">
       <div className="flex items-start justify-between gap-2 border-b px-3 py-2.5">
         <div>
           <h2 className="text-sm font-semibold">{selectedFips.size} counties selected</h2>
@@ -50,7 +50,7 @@ export function CountySelectionPanel({
         </Button>
       </div>
 
-      <ul className="flex-1 overflow-y-auto divide-y text-sm">
+      <ul className="custom-scrollbar flex-1 divide-y overflow-y-auto text-sm">
         {sorted.map((fips) => (
           <li key={fips} className="flex items-center justify-between gap-2 px-3 py-1.5">
             <span className="min-w-0 truncate">

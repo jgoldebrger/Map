@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { DataTable, type DataTableColumn, type SortState } from "@/components/ui/data-table";
+import { AdminPage } from "@/components/layout/AdminPage";
+import { AdminPageHeader } from "@/components/layout/AdminPageHeader";
 
 type ZipRow = {
   zip: string;
@@ -95,17 +97,18 @@ export default function ZipCodesPage() {
   );
 
   return (
-    <div className="p-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">ZIP Codes</h1>
-        <p className="text-muted-foreground">
-          {total > 0
-            ? `${total.toLocaleString()} ZIP codes in the database. Use search to narrow results, then paginate through all matches.`
-            : "No ZIP codes loaded yet. Run npm run import:zips to import."}
-        </p>
-      </div>
+    <AdminPage>
+      <AdminPageHeader
+        title="ZIP Codes"
+        description={
+          total > 0
+            ? `${total.toLocaleString()} ZIP codes in the database. Search and paginate through matches.`
+            : "No ZIP codes loaded yet. Run import to populate."
+        }
+      />
 
-      <DataTable
+      <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
+        <DataTable
         data={zips}
         columns={columns}
         getRowId={(z) => z.zip}
@@ -134,7 +137,8 @@ export default function ZipCodesPage() {
             className="max-w-xs h-9"
           />
         }
-      />
-    </div>
+        />
+      </div>
+    </AdminPage>
   );
 }

@@ -75,6 +75,9 @@ Desktop.ini
 # supabase local CLI
 .supabase/
 
+# superdesign temp files
+.superdesign/tmp/
+
 # Local-only Supabase notes (may contain project-specific values — do not commit secrets)
 docs/SUPABASE.local.md
 

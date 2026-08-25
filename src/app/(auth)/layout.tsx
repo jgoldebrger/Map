@@ -6,7 +6,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <SessionProvider>
       <Suspense
         fallback={
-          <div className="min-h-screen flex items-center justify-center">Loading...</div>
+          <div className="hero-gradient flex min-h-screen items-center justify-center">
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          </div>
         }
       >
         {children}

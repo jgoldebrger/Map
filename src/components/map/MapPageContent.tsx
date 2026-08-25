@@ -92,8 +92,8 @@ export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant 
       {variant === "full" ? (
         <SiteHeader />
       ) : variant === "embed" ? (
-        <div className="flex shrink-0 items-center justify-between border-b bg-white px-4 py-2 text-sm">
-          <span className="font-medium">Fabuwood shipping territories</span>
+        <div className="flex shrink-0 items-center justify-between border-b bg-white/95 px-4 py-3 shadow-sm backdrop-blur-sm">
+          <span className="font-medium tracking-tight">Fabuwood shipping territories</span>
           <Link
             href="/map"
             target="_blank"
@@ -125,15 +125,23 @@ export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant 
           />
         )}
 
-        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-          <ShippingMethodFilter
-            methods={shippingMethods}
-            selected={methodFilterIds}
-            onChange={setMethodFilterIds}
-          />
-          <MapSearch />
+        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 max-w-sm">
+          <div className="glass-panel flex flex-col gap-2 rounded-xl p-2">
+            <ShippingMethodFilter
+              methods={shippingMethods}
+              selected={methodFilterIds}
+              onChange={setMethodFilterIds}
+              className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+            />
+            <MapSearch />
+            {methodFilterIds.size > 0 && (
+              <p className="text-[11px] text-muted-foreground px-1">
+                Only selected shipping methods are colored on the map.
+              </p>
+            )}
+          </div>
           {zipHoverInfo ? (
-            <div className="rounded-md border bg-white px-3 py-2 text-sm shadow">
+            <div className="glass-panel rounded-md px-3 py-2 text-sm">
               <span className="font-mono font-medium">{zipHoverInfo.zip}</span>
               <span className="mx-1.5 text-muted-foreground">·</span>
               <span className="font-medium">{zipHoverInfo.territoryName}</span>
@@ -141,7 +149,7 @@ export function MapPageContent({ variant = "full" }: { variant?: MapPageVariant 
           ) : (
             hoverInfo &&
             displayAssignments[hoverInfo] && (
-              <div className="rounded-md border bg-white px-3 py-2 text-sm shadow">
+              <div className="glass-panel rounded-md px-3 py-2 text-sm">
                 <span className="font-medium">{displayAssignments[hoverInfo].territoryName}</span>
               </div>
             )

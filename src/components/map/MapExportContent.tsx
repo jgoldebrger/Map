@@ -151,7 +151,7 @@ export function MapExportContent() {
           />
         )}
 
-        <div className="absolute top-4 left-4 z-10">
+        <div className="absolute top-4 left-4 z-10 glass-panel rounded-xl p-1">
           <ShippingMethodFilter
             methods={shippingMethods}
             selected={methodFilterIds}
@@ -160,16 +160,16 @@ export function MapExportContent() {
         </div>
       </div>
 
-      <aside className="flex w-full shrink-0 flex-col border-t bg-white lg:w-80 lg:border-l lg:border-t-0">
-        <div className="border-b p-4">
-          <h2 className="text-sm font-semibold">Export PDF</h2>
+      <aside className="flex w-full shrink-0 flex-col border-t bg-white lg:w-80 lg:border-l lg:border-t-0 shadow-sm">
+        <div className="border-b p-5">
+          <h2 className="text-sm font-semibold tracking-tight">Export PDF</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             Select shipping methods, preview the colored map, then export a landscape PDF like the
             CCDT/CCLT shipping maps.
           </p>
         </div>
 
-        <div className="flex-1 space-y-4 overflow-y-auto p-4">
+        <div className="flex-1 space-y-4 overflow-y-auto custom-scrollbar p-5">
           <div className="space-y-2">
             <Label htmlFor="export-title">PDF title</Label>
             <Input

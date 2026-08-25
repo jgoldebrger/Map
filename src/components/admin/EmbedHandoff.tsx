@@ -5,6 +5,8 @@ import { Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AdminPage } from "@/components/layout/AdminPage";
+import { AdminPageHeader } from "@/components/layout/AdminPageHeader";
 
 type EmbedHandoffProps = {
   baseUrl: string;
@@ -34,16 +36,13 @@ export function EmbedHandoff({ baseUrl, allowedOrigins }: EmbedHandoffProps) {
   }, [snippet]);
 
   return (
-    <div className="p-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Partner embed</h1>
-        <p className="text-muted-foreground">
-          Share a live territory map with partner websites via iframe. Only domains listed in{" "}
-          <code className="text-xs">EMBED_ALLOWED_ORIGINS</code> may frame the embed route.
-        </p>
-      </div>
+    <AdminPage>
+      <AdminPageHeader
+        title="Partner embed"
+        description="Share a live territory map with partner websites via iframe. Only domains listed in EMBED_ALLOWED_ORIGINS may frame the embed route."
+      />
 
-      <Card>
+      <Card className="rounded-xl shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg">Embed URL</CardTitle>
         </CardHeader>
@@ -52,7 +51,7 @@ export function EmbedHandoff({ baseUrl, allowedOrigins }: EmbedHandoffProps) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="rounded-xl shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-lg">Iframe snippet</CardTitle>
           <Button type="button" variant="outline" size="sm" onClick={copySnippet}>
@@ -74,7 +73,7 @@ export function EmbedHandoff({ baseUrl, allowedOrigins }: EmbedHandoffProps) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="rounded-xl shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg">Allowed partner domains</CardTitle>
         </CardHeader>
@@ -102,7 +101,7 @@ export function EmbedHandoff({ baseUrl, allowedOrigins }: EmbedHandoffProps) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="rounded-xl shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg">Partner checklist</CardTitle>
         </CardHeader>
@@ -119,6 +118,6 @@ export function EmbedHandoff({ baseUrl, allowedOrigins }: EmbedHandoffProps) {
           </ul>
         </CardContent>
       </Card>
-    </div>
+    </AdminPage>
   );
 }

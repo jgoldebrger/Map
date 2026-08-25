@@ -34,7 +34,7 @@ export function MapLegend({ assignments, className }: Props) {
 
   return (
     <div
-      className={`rounded-lg border bg-white/95 p-4 shadow-lg backdrop-blur max-h-[70vh] overflow-y-auto ${className ?? ""}`}
+      className={`glass-panel rounded-lg p-4 max-h-[70vh] overflow-y-auto custom-scrollbar ${className ?? ""}`}
     >
       <h3 className="text-sm font-semibold mb-3">Territories</h3>
       {methods.map((method) => (

@@ -17,7 +17,7 @@ export function ZipDetailPanel({ zip, detail, isLoading, error, onClose }: Props
   if (!zip) return null;
 
   return (
-    <div className="absolute right-4 top-4 bottom-4 w-80 rounded-xl border bg-white shadow-xl z-20 flex flex-col">
+    <div className="absolute right-4 top-4 bottom-4 w-96 glass-panel rounded-xl z-20 flex flex-col">
       <div className="flex items-center justify-between border-b p-4">
         <div>
           <h2 className="font-semibold">ZIP Details</h2>

@@ -16,6 +16,8 @@ import type { TerritoryInput } from "@/lib/validators/territory";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useSyncTerritoryAssignments } from "@/hooks/useTerritoryAssignments";
 import { weekdaySortIndex } from "@/lib/weekdays";
+import { AdminPage } from "@/components/layout/AdminPage";
+import { AdminPageHeader } from "@/components/layout/AdminPageHeader";
 
 type Territory = {
   id: string;
@@ -178,12 +180,11 @@ export default function TerritoriesPage() {
   );
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Territories</h1>
-          <p className="text-muted-foreground">Manage shipping territories and routes</p>
-        </div>
+    <AdminPage>
+      <AdminPageHeader
+        title="Territories"
+        description="Manage shipping territories, colors, and ship schedules."
+      >
         {canWrite && (
           <Button
             onClick={() => {
@@ -195,15 +196,17 @@ export default function TerritoriesPage() {
             Add Territory
           </Button>
         )}
-      </div>
+      </AdminPageHeader>
 
-      <DataTable
+      <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
+        <DataTable
         data={territories}
         columns={columns}
         getRowId={(t) => t.id}
         storageKey="territories"
         emptyMessage="No territories yet."
-      />
+        />
+      </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
@@ -230,6 +233,6 @@ export default function TerritoriesPage() {
           />
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPage>
   );
 }

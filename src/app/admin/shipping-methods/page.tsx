@@ -20,6 +20,8 @@ import {
   type ShippingMethodInput,
 } from "@/lib/validators/shipping-method";
 import { usePermissions } from "@/hooks/usePermissions";
+import { AdminPage } from "@/components/layout/AdminPage";
+import { AdminPageHeader } from "@/components/layout/AdminPageHeader";
 
 type ShippingMethod = {
   id: string;
@@ -156,30 +158,28 @@ export default function ShippingMethodsPage() {
   );
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Shipping Methods</h1>
-          <p className="text-muted-foreground">
-            Define how you ship (e.g. truck, LTL, common carrier). Territories are grouped under each
-            method.
-          </p>
-        </div>
+    <AdminPage>
+      <AdminPageHeader
+        title="Shipping Methods"
+        description="Define how you ship (e.g. truck, LTL, common carrier). Territories are grouped under each method."
+      >
         {canWrite && (
           <Button onClick={openCreate}>
             <Plus className="h-4 w-4 mr-1" />
             Add Method
           </Button>
         )}
-      </div>
+      </AdminPageHeader>
 
-      <DataTable
+      <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
+        <DataTable
         data={methods}
         columns={columns}
         getRowId={(m) => m.id}
         storageKey="shipping-methods"
         emptyMessage="No shipping methods yet. Create one, then add territories."
-      />
+        />
+      </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
@@ -222,6 +222,6 @@ export default function ShippingMethodsPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPage>
   );
 }

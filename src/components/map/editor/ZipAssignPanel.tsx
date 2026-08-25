@@ -196,7 +196,7 @@ export function ZipAssignPanel({
   };
 
   return (
-    <div className="absolute top-0 right-0 z-20 flex h-full w-full max-w-md flex-col border-l bg-white shadow-lg">
+    <div className="absolute top-0 right-0 z-20 flex h-full w-full max-w-md flex-col border-l bg-white/95 shadow-xl backdrop-blur-sm">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div>
           <h2 className="font-semibold">ZIP assignments</h2>
@@ -304,7 +304,7 @@ export function ZipAssignPanel({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0">
+      <div className="custom-scrollbar flex-1 min-h-0 overflow-y-auto">
         {loading ? (
           <p className="p-4 text-sm text-muted-foreground">Loading ZIP codes…</p>
         ) : rows.length === 0 ? (

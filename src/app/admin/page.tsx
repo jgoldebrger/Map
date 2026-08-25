@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Layers, MapPin, Hash, Truck, ArrowRight } from "lucide-react";
+import { AdminPage } from "@/components/layout/AdminPage";
+import { AdminPageHeader } from "@/components/layout/AdminPageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -33,11 +35,11 @@ export default function AdminDashboard() {
   }, []);
 
   return (
-    <div className="p-8 space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Shipping Intelligence Platform overview</p>
-      </div>
+    <AdminPage>
+      <AdminPageHeader
+        title="Dashboard"
+        description="Shipping Intelligence Platform overview"
+      />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
@@ -57,7 +59,7 @@ export default function AdminDashboard() {
         <StatCard icon={Hash} label="ZIP Codes" value={stats?.zipCodes} href="/admin/zipcodes" />
       </div>
 
-      <Card>
+      <Card className="rounded-xl shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Recent Changes</CardTitle>
           <Button variant="ghost" size="sm" asChild>
@@ -91,7 +93,7 @@ export default function AdminDashboard() {
           </ul>
         </CardContent>
       </Card>
-    </div>
+    </AdminPage>
   );
 }
 
@@ -109,7 +111,7 @@ function StatCard({
   linkLabel?: string;
 }) {
   return (
-    <Card>
+    <Card className="rounded-xl shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
         <Icon className="h-4 w-4 text-muted-foreground" />

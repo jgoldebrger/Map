@@ -289,12 +289,15 @@ export default function MapEditorPage() {
           countyFeatures={countyFeatures}
           onSelect={applyFipsSelection}
         />
-        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-          <ShippingMethodFilter
-            methods={shippingMethods}
-            selected={methodFilterIds}
-            onChange={setMethodFilterIds}
-          />
+        <div className="absolute top-4 left-4 z-10 flex max-w-sm flex-col gap-2">
+          <div className="glass-panel flex flex-col gap-2 rounded-xl p-2">
+            <ShippingMethodFilter
+              methods={shippingMethods}
+              selected={methodFilterIds}
+              onChange={setMethodFilterIds}
+              className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+            />
+          </div>
           <CountySelectionPanel
             selectedFips={selectedFips}
             countyFeatures={countyFeatures}

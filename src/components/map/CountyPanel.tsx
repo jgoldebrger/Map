@@ -2,6 +2,7 @@
 
 import { X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import type { CountyDetail } from "@/hooks/useCountyDetail";
 
 type Props = {
@@ -16,7 +17,7 @@ export function CountyPanel({ fips, detail, isLoading, error, onClose }: Props) 
   if (!fips) return null;
 
   return (
-    <div className="absolute right-4 top-4 bottom-4 w-80 rounded-xl border bg-white shadow-xl z-20 flex flex-col">
+    <div className="absolute right-4 top-4 bottom-4 w-96 glass-panel rounded-xl z-20 flex flex-col">
       <div className="flex items-center justify-between border-b p-4">
         <h2 className="font-semibold">County Details</h2>
         <Button variant="ghost" size="icon" onClick={onClose}>
@@ -40,7 +41,9 @@ export function CountyPanel({ fips, detail, isLoading, error, onClose }: Props) 
             <DetailRow label="FIPS" value={detail.fipsCode} />
             <hr />
             <DetailRow label="Territory" value={detail.territory ?? "Unassigned"} />
-            <DetailRow label="Shipping Method" value={detail.shippingMethod ?? "—"} />
+            {detail.shippingMethod && (
+              <Badge variant="secondary" className="text-xs">{detail.shippingMethod}</Badge>
+            )}
             <DetailRow label="Ship Day" value={detail.shipDay ?? "—"} />
             <DetailRow label="Cutoff Day" value={detail.cutoffDay ?? "—"} />
             {detail.notes && (

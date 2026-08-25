@@ -33,7 +33,7 @@ export function AskMapsFloat({ className }: Props) {
       )}
 
       {open && (
-        <div className="pointer-events-auto fixed inset-y-4 right-4 z-40 flex w-full max-w-sm flex-col rounded-xl border bg-white shadow-2xl">
+        <div className="pointer-events-auto fixed inset-y-4 right-4 z-40 flex w-full max-w-sm flex-col rounded-xl glass-panel shadow-2xl">
           <div className="flex items-start justify-between gap-2 border-b px-4 py-3">
             <div>
               <h2 className="font-semibold">Ask Maps</h2>
@@ -52,7 +52,7 @@ export function AskMapsFloat({ className }: Props) {
               <X className="h-4 w-4" />
             </Button>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 min-h-0">
+          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4">
             <ShipDateChatCore compact />
           </div>
         </div>

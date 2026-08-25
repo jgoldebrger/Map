@@ -58,9 +58,12 @@ export function AdminSidebar() {
   );
 
   return (
-    <aside className="flex w-56 flex-col border-r bg-white h-full">
-      <div className="p-4 border-b">
-        <Link href="/admin" className="font-semibold text-sm">
+    <aside className="flex h-full w-56 flex-col border-r bg-white shadow-sm">
+      <div className="border-b p-4">
+        <Link href="/admin" className="flex items-center gap-2 font-semibold text-sm">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Truck className="h-4 w-4" />
+          </span>
           SIP Admin
         </Link>
         <p className="text-xs text-muted-foreground">Fabuwood Logistics</p>
@@ -74,9 +77,9 @@ export function AdminSidebar() {
             key={href}
             href={href}
             className={cn(
-              "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+              "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
               pathname === href || (href !== "/admin" && pathname.startsWith(href))
-                ? "bg-primary/10 text-primary font-medium"
+                ? "bg-blue-50 font-medium text-blue-600"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
             )}
           >

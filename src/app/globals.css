@@ -45,3 +45,31 @@
 .mapboxgl-ctrl-group button {
   @apply bg-white;
 }
+
+@layer utilities {
+  .glass-panel {
+    @apply border border-border bg-white/95 shadow-lg backdrop-blur-md;
+  }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 9999px;
+  }
+
+  .hero-gradient {
+    @apply bg-gradient-to-b from-white to-slate-50;
+  }
+}

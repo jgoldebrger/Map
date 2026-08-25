@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
+import { AdminPage } from "@/components/layout/AdminPage";
+import { AdminPageHeader } from "@/components/layout/AdminPageHeader";
 
 type AuditLog = {
   id: string;
@@ -84,20 +86,22 @@ export default function AuditPage() {
   );
 
   return (
-    <div className="p-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Audit History</h1>
-        <p className="text-muted-foreground">Track all territory and data changes</p>
-      </div>
+    <AdminPage>
+      <AdminPageHeader
+        title="Audit History"
+        description="Track all territory and data changes"
+      />
 
-      <DataTable
+      <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
+        <DataTable
         data={logs}
         columns={columns}
         getRowId={(log) => log.id}
         loading={loading}
         storageKey="audit"
         emptyMessage="No audit entries yet."
-      />
-    </div>
+        />
+      </div>
+    </AdminPage>
   );
 }

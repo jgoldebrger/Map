@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { lookupSchema, type LookupInput } from "@/lib/validators/lookup";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -69,12 +70,20 @@ function LookupPageContent() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
+    <div className="min-h-screen flex flex-col">
       <SiteHeader />
-      <main className="flex-1 container mx-auto px-4 py-8 max-w-lg">
-        <Card>
+      <main className="hero-gradient flex-1">
+        <div className="container mx-auto max-w-lg px-4 py-8 lg:py-10">
+          <div className="mb-6 space-y-2">
+            <p className="text-sm font-medium uppercase tracking-wide text-primary">Dealer tools</p>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">ZIP & territory lookup</h1>
+            <p className="text-sm text-muted-foreground">
+              Instant territory, shipping method, ship day, and cutoff for any ZIP or location.
+            </p>
+          </div>
+        <Card className="rounded-xl border shadow-sm shadow-slate-200/60">
           <CardHeader>
-            <CardTitle>Shipping Lookup</CardTitle>
+            <CardTitle>Search</CardTitle>
             <CardDescription>
               Search by ZIP, county, city, territory, or state
             </CardDescription>
@@ -128,6 +137,7 @@ function LookupPageContent() {
           </CardContent>
         </Card>
         <AskMapsFloat />
+        </div>
       </main>
     </div>
   );
@@ -137,12 +147,14 @@ export default function LookupPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex flex-col bg-slate-50">
+        <div className="min-h-screen flex flex-col">
           <SiteHeader />
-          <main className="flex-1 container mx-auto px-4 py-8 max-w-lg">
-            <Card>
-              <CardContent className="py-8 text-sm text-muted-foreground">Loading lookup…</CardContent>
-            </Card>
+          <main className="hero-gradient flex-1">
+            <div className="container mx-auto max-w-lg px-4 py-8">
+              <Card className="rounded-xl shadow-sm">
+                <CardContent className="py-8 text-sm text-muted-foreground">Loading lookup…</CardContent>
+              </Card>
+            </div>
           </main>
         </div>
       }
@@ -154,14 +166,25 @@ export default function LookupPage() {
 
 function ResultCard({ result }: { result: LookupResult }) {
   return (
-    <div className="mt-6 rounded-lg border bg-muted/30 p-4 space-y-2">
+    <div className="mt-6 rounded-xl border bg-white p-5 space-y-3 shadow-sm">
       {result.unassigned && (
         <p className="text-sm text-amber-700">
           This location is in the database but has no territory assignment yet.
         </p>
       )}
-      <Row label="Territory" value={result.territory} highlight={!result.unassigned} />
-      <Row label="Shipping Method" value={result.shippingMethod} />
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          {result.color && (
+            <span
+              className="h-3.5 w-3.5 shrink-0 rounded-sm border"
+              style={{ backgroundColor: result.color }}
+              aria-hidden
+            />
+          )}
+          <span className="truncate text-sm font-semibold">{result.territory}</span>
+        </div>
+        <Badge variant="secondary" className="shrink-0 text-xs">{result.shippingMethod}</Badge>
+      </div>
       <Row label="Ship Day" value={result.shipDay ?? "—"} />
       <Row label="Cutoff Day" value={result.cutoffDay ?? "—"} />
       {result.county && <Row label="County" value={`${result.county}, ${result.state}`} />}

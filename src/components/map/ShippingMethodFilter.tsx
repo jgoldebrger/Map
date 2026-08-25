@@ -44,7 +44,7 @@ export function ShippingMethodFilter({ methods, selected, onChange, className }:
     <div
       ref={containerRef}
       className={cn(
-        "relative flex flex-wrap items-center gap-2 rounded-md border bg-white/95 p-2 shadow-lg backdrop-blur",
+        "glass-panel relative flex flex-wrap items-center gap-2 rounded-lg p-2",
         className,
       )}
     >

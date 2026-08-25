@@ -112,9 +112,9 @@ export function MapEditorToolbar({
   };
 
   return (
-    <div className="shrink-0 border-b bg-white">
-      <div className="border-b px-4 py-3">
-        <h1 className="text-xl font-bold">Map Editor</h1>
+    <div className="shrink-0 border-b bg-white shadow-sm">
+      <div className="border-b px-6 py-4">
+        <h1 className="text-xl font-bold tracking-tight">Map Editor</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
           Select counties, assign a territory, or open ZIP overrides for exceptions like the
           Florida Keys.
