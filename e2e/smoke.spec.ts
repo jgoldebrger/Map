@@ -4,14 +4,18 @@ import { isDbReady } from "./db-ready";
 test.describe("Public pages", () => {
   test("home page loads with SIP branding", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: /Shipping Intelligence Platform/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /View Map/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /ZIP Lookup/i })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /One live map for every shipping method/i }),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: /View map/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /ZIP lookup/i })).toBeVisible();
   });
 
   test("lookup page renders search form", async ({ page }) => {
     await page.goto("/lookup");
-    await expect(page.getByText("Shipping Lookup")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /ZIP & territory lookup/i }),
+    ).toBeVisible();
     await expect(page.getByRole("button", { name: /Look up/i })).toBeVisible();
   });
 
